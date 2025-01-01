@@ -1,0 +1,754 @@
+#include "main.h"
+
+
+#include <Eigen/Dense>
+using namespace Eigen;
+
+// Function to fit an ellipse using Gauss method
+VectorXd fitEllipse(const std::vector<double>& x, const std::vector<double>& y) {
+	int n = x.size();
+	if (n < 5) {
+		std::cerr << "Need at least 5 points to fit an ellipse." << std::endl;
+		return VectorXd(0);
+	}
+
+	// Step 1: Construct the design matrix D
+	MatrixXd D(n, 6);
+	for (int i = 0; i < n; ++i) {
+		D(i, 0) = x[i] * x[i];
+		D(i, 1) = x[i] * y[i];
+		D(i, 2) = y[i] * y[i];
+		D(i, 3) = x[i];
+		D(i, 4) = y[i];
+		D(i, 5) = 1.0;
+	}
+
+	// Step 2: Compute the scatter matrix S = D^T * D
+	MatrixXd S = D.transpose() * D;
+
+	// Step 3: Define the constraint matrix C
+	MatrixXd C(6, 6);
+	C << 0, 0, 2, 0, 0, 0,
+		0, -1, 0, 0, 0, 0,
+		2, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0;
+
+	// Step 4: Solve the generalized eigenvalue problem S * v = ? * C * v
+	EigenSolver<MatrixXd> solver(S);
+	MatrixXd eigenvalues = solver.eigenvalues().real();
+	MatrixXd eigenvectors = solver.eigenvectors().real();
+
+	// Find the solution satisfying the ellipse constraint
+	int bestIndex = -1;
+	for (int i = 0; i < eigenvalues.size(); ++i) {
+		VectorXd v = eigenvectors.col(i);
+		if (v.transpose() * C * v > 0) {
+			bestIndex = i;
+			break;
+		}
+	}
+
+	if (bestIndex == -1) {
+		std::cerr << "No valid ellipse found." << std::endl;
+		return VectorXd(0);
+	}
+
+	// The coefficients of the ellipse equation
+	//VectorXd ellipseParams = eigenvectors.col(bestIndex);
+	//std::cout << "Ellipse Parameters: " << ellipseParams.transpose() << std::endl;
+
+	return eigenvectors.col(bestIndex).transpose();
+}
+
+int main(int argc, char **argv)
+{
+	cout << setprecision(20) << endl;
+
+
+	//cout << sqrt((grav_constant * 1.988435e30 / 69817079000.0) * (1 - 0.20563069) / (1 + 0.20563069)) << endl;
+
+
+
+
+
+
+
+//	return 0;
+
+
+
+
+	glutInit(&argc, argv);
+	init_opengl(win_x, win_y);
+	glutReshapeFunc(reshape_func);
+	glutIdleFunc(idle_func);
+	glutDisplayFunc(display_func);
+	glutKeyboardFunc(keyboard_func);
+	glutMouseFunc(mouse_func);
+	glutMotionFunc(motion_func);
+	glutPassiveMotionFunc(passive_motion_func);
+	//glutIgnoreKeyRepeat(1);
+	glutMainLoop();
+	glutDestroyWindow(win_id);
+
+	return 0;
+}
+
+custom_math::vector_3 grav_acceleration(const custom_math::vector_3 &pos, const custom_math::vector_3 &vel, const double G)
+{
+	custom_math::vector_3 grav_dir = sun_pos - pos;
+
+	double distance = grav_dir.length();
+
+	grav_dir.normalize();
+	custom_math::vector_3 accel = grav_dir * (G*sun_mass / pow(distance, 2.0));
+
+	return accel;
+}
+
+
+
+void proceed_Euler(custom_math::vector_3 &pos, custom_math::vector_3 &vel, const double G, const double dt)
+{
+	custom_math::vector_3 accel = grav_acceleration(pos, vel, G);
+
+	vel += accel * dt;
+	pos += vel * dt;
+}
+
+void proceed_RK4(custom_math::vector_3 &pos, custom_math::vector_3 &vel, const double G, const double dt)
+{
+	static const double one_sixth = 1.0 / 6.0;
+
+	custom_math::vector_3 k1_velocity = vel;
+	custom_math::vector_3 k1_acceleration = grav_acceleration(pos, k1_velocity, G);
+	custom_math::vector_3 k2_velocity = vel + k1_acceleration * dt*0.5;
+	custom_math::vector_3 k2_acceleration = grav_acceleration(pos + k1_velocity * dt*0.5, k2_velocity, G);
+	custom_math::vector_3 k3_velocity = vel + k2_acceleration * dt*0.5;
+	custom_math::vector_3 k3_acceleration = grav_acceleration(pos + k2_velocity * dt*0.5, k3_velocity, G);
+	custom_math::vector_3 k4_velocity = vel + k3_acceleration * dt;
+	custom_math::vector_3 k4_acceleration = grav_acceleration(pos + k3_velocity * dt, k4_velocity, G);
+
+	vel += (k1_acceleration + (k2_acceleration + k3_acceleration)*2.0 + k4_acceleration)*one_sixth*dt;
+	pos += (k1_velocity + (k2_velocity + k3_velocity)*2.0 + k4_velocity)*one_sixth*dt;
+}
+
+
+void proceed_symplectic4(custom_math::vector_3& pos, custom_math::vector_3& vel, const double G, const double dt)
+{
+	static double const cr2 = pow(2.0, 1.0 / 3.0);
+
+	static const double c[4] =
+	{
+		1.0 / (2.0 * (2.0 - cr2)),
+		(1.0 - cr2) / (2.0 * (2.0 - cr2)),
+		(1.0 - cr2) / (2.0 * (2.0 - cr2)),
+		1.0 / (2.0 * (2.0 - cr2))
+	};
+
+	static const double d[4] =
+	{
+		1.0 / (2.0 - cr2),
+		-cr2 / (2.0 - cr2),
+		1.0 / (2.0 - cr2),
+		0.0
+	};
+
+	pos += vel * c[0] * dt;
+	vel += grav_acceleration(pos, vel, G) * d[0] * dt;
+
+	pos += vel * c[1] * dt;
+	vel += grav_acceleration(pos, vel, G) * d[1] * dt;
+
+	pos += vel * c[2] * dt;
+	vel += grav_acceleration(pos, vel, G) * d[2] * dt;
+
+	pos += vel * c[3] * dt;
+ //	vel += grav_acceleration(pos, vel, G) * d[3] * dt; // last element d[3] is always 0
+}
+
+
+
+
+void idle_func(void)
+{
+	static size_t frame_count = 0;
+
+	frame_count++;
+
+	const double dt = 10000; // 10000 seconds == 2.77777 hours
+
+	// Pick an integrator:
+
+	//proceed_Euler(mercury_pos, mercury_vel, grav_constant, dt);
+	//proceed_RK4(mercury_pos, mercury_vel, grav_constant, dt);
+	proceed_symplectic4(mercury_pos, mercury_vel, grav_constant, dt);
+
+    positions.push_back(mercury_pos);
+
+
+	static bool calculated_ellipse = false;
+
+
+	if (calculated_ellipse == false && frame_count % 123 == 0)
+		ellipse_positions.push_back(positions[positions.size() - 1]);
+
+	if (false == calculated_ellipse && ellipse_positions.size() == 20)
+	{
+		calculated_ellipse = true;
+
+		std::vector<double> x;
+		std::vector<double> y;
+
+		for (size_t i = 0; i < ellipse_positions.size(); i++)
+		{
+			x.push_back(ellipse_positions[i].x);
+			y.push_back(ellipse_positions[i].y);
+		}
+
+		VectorXd ellipse_coefficients = fitEllipse(x, y);
+
+		const double A = ellipse_coefficients(0);
+		const double B = ellipse_coefficients(1);
+		const double C = ellipse_coefficients(2);
+		const double D = ellipse_coefficients(3);
+		const double E = ellipse_coefficients(4);
+		const double F = ellipse_coefficients(5);
+
+		cout << ellipse_coefficients << endl;
+
+
+		// MatrixXd d(3, 3);
+		//d <<
+		//	ellipse_coefficients(0),		0.5 * ellipse_coefficients(1),	0.5 * ellipse_coefficients(3),
+		//	0.5 * ellipse_coefficients(1),	ellipse_coefficients(2),		0.5 * ellipse_coefficients(4),
+		//	0.5 * ellipse_coefficients(3),	0.5 * ellipse_coefficients(4),	ellipse_coefficients(5);
+
+
+		//double d = A * C * F + 0.25 * B * D * E - 0.25 * (A * E * E + C * D * D + F * B * B);
+
+		//cout << C*d << endl;
+
+		//if (C*d < 0)
+		//{
+		//	cout << "good" << endl;
+		//}
+		//else
+		//	cout << "bad" << endl;
+
+
+		size_t px = 2000;
+		size_t py = 2000;
+	
+		vector<double> grid_data(px * py, 0);
+
+		size_t boundary_count = 0;
+		size_t interior_count = 0;
+
+		double template_width = 2e11;
+
+		double inverse_width = 1.0 / template_width;
+		double step_size = template_width / static_cast<double>(px - 1);
+		double template_height = step_size * (py - 1); // Assumes square pixels.
+
+
+		double isovalue = 0;// 1 / F;
+
+		double grid_x_min = -template_width / 2.0;
+		double grid_y_max = template_height / 2.0;
+
+
+		double grid_x_pos = grid_x_min; // Start at minimum x.
+		double grid_y_pos = grid_y_max; // Start at maximum y.
+
+		double min_val = DBL_MAX;
+		double max_val = 0;
+
+		// Begin march.
+		for (short unsigned int y = 0; y < py; y++, grid_y_pos -= step_size, grid_x_pos = grid_x_min)
+		{
+			for (short unsigned int x = 0; x < px; x++, grid_x_pos += step_size)
+			{
+				double x_pos = grid_x_pos;
+				double y_pos = grid_y_pos;
+			
+				//cout << x_pos << " " << y_pos << endl;
+
+				double value =
+					A * x_pos * x_pos +
+					B * x_pos * y_pos +
+					C * y_pos * y_pos +
+					D * x_pos +
+					E * y_pos +
+					F;
+
+				if (value < min_val)
+					min_val = value;
+
+				if (value > max_val)
+					max_val = value;
+
+
+				//cout << value << endl;
+
+				//if (value < 0)
+				//	cout << "greater than zero " << value << endl;
+				//else
+				//	cout << "less than zero " << value << endl;
+
+				//if (std::abs(value) < -1/F)
+				//	value = -1.0;
+				//else
+				//	value = 1.0;
+
+
+				size_t index = x * py + y;
+
+				//if (0 <= (ellipse_coefficients(1) * ellipse_coefficients(1) - 4 * ellipse_coefficients(0) * ellipse_coefficients(2)))
+				//	cout << "bad" << endl;
+
+				grid_data[index] = value;// (rand() % RAND_MAX) / static_cast<double>(RAND_MAX);
+
+				//if (rand() % 2 == 0)
+				//	grid_data[index] = -grid_data[index];
+			}
+		}
+
+		cout << min_val << " " << max_val << endl;
+
+		isovalue = 0.5*(min_val + max_val);
+
+		// Generate geometric primitives using marching squares.
+		grid_square g;
+
+		cout << "Generating geometric primitives..." << endl;
+		cout << endl;
+
+		grid_x_pos = grid_x_min; // Start at minimum x.
+		grid_y_pos = grid_y_max; // Start at maximum y.
+
+		// Begin march.
+		for (short unsigned int y = 0; y < py - 1; y++, grid_y_pos -= step_size, grid_x_pos = grid_x_min)
+		{
+			for (short unsigned int x = 0; x < px - 1; x++, grid_x_pos += step_size)
+			{
+				// Corner vertex order: 03
+				//                      12
+				// e.g.: clockwise, as in OpenGL
+				g.vertex[0] = vertex_2(grid_x_pos, grid_y_pos);
+				g.vertex[1] = vertex_2(grid_x_pos, grid_y_pos - step_size);
+				g.vertex[2] = vertex_2(grid_x_pos + step_size, grid_y_pos - step_size);
+				g.vertex[3] = vertex_2(grid_x_pos + step_size, grid_y_pos);
+
+				g.value[0] = grid_data[y * px + x];
+				g.value[1] = grid_data[(y + 1) * px + x];
+				g.value[2] = grid_data[(y + 1) * px + (x + 1)];
+				g.value[3] = grid_data[y * px + (x + 1)];
+
+				size_t curr_ls_size = line_segments.size();
+				size_t curr_tris_size = triangles.size();
+
+				g.generate_primitives(line_segments, triangles, isovalue);
+
+				size_t new_ls_size = line_segments.size();
+				size_t new_tris_size = triangles.size();
+
+				if (curr_ls_size != new_ls_size)
+					boundary_count++;
+
+				if (curr_tris_size != new_tris_size)
+					interior_count++;
+			}
+		}
+
+
+		// Gather and print final information
+		double length = 0;
+		double area = 0;
+		double sa = 0;
+
+		double x_max = grid_x_min;
+		double x_min = -grid_x_min;
+		double y_max = -grid_y_max;
+		double y_min = grid_y_max;
+
+		for (size_t i = 0; i < line_segments.size(); i++)
+		{
+			length += line_segments[i].length();
+
+			if (line_segments[i].vertex[0].x > x_max)
+				x_max = line_segments[i].vertex[0].x;
+
+			if (line_segments[i].vertex[1].x > x_max)
+				x_max = line_segments[i].vertex[1].x;
+
+			if (line_segments[i].vertex[0].x < x_min)
+				x_min = line_segments[i].vertex[0].x;
+
+			if (line_segments[i].vertex[1].x < x_min)
+				x_min = line_segments[i].vertex[1].x;
+
+			if (line_segments[i].vertex[0].y > y_max)
+				y_max = line_segments[i].vertex[0].y;
+
+			if (line_segments[i].vertex[1].y > y_max)
+				y_max = line_segments[i].vertex[1].y;
+
+			if (line_segments[i].vertex[0].y < y_min)
+				y_min = line_segments[i].vertex[0].y;
+
+			if (line_segments[i].vertex[1].y < y_min)
+				y_min = line_segments[i].vertex[1].y;
+		}
+
+		for (size_t i = 0; i < triangles.size(); i++)
+			area += triangles[i].area();
+
+		if (0 != area)
+			sa = length / area;
+
+		cout << "Geometric primitive info: " << endl;
+		cout << "Vertex x min, max: " << x_min << ", " << x_max << endl;
+		cout << "Vertex y min, max: " << y_min << ", " << y_max << endl;
+		cout << "Line segments:     " << line_segments.size() << endl;
+		cout << "Length:            " << length << endl;
+		cout << "Triangles:         " << triangles.size() << endl;
+		cout << "Area:              " << area << endl;
+		cout << "Length/Area:       " << sa << endl;
+
+		cout << "Box counting dimension of boundary: " << logf(static_cast<float>(boundary_count)) / logf(1.0f / static_cast<float>(step_size)) << endl;
+
+
+
+
+
+
+
+
+
+
+
+
+		//exit(0);
+	}
+
+
+    glutPostRedisplay();
+}
+
+void init_opengl(const int &width, const int &height)
+{
+	win_x = width;
+	win_y = height;
+
+	if(win_x < 1)
+		win_x = 1;
+
+	if(win_y < 1)
+		win_y = 1;
+
+	glutInitDisplayMode(GLUT_RGB|GLUT_DOUBLE|GLUT_DEPTH);
+	glutInitWindowPosition(0, 0);
+	glutInitWindowSize(win_x, win_y);
+	win_id = glutCreateWindow("orbit");
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(GL_TRUE);
+	glShadeModel(GL_SMOOTH);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+
+	glClearColor((float)background_colour.x, (float)background_colour.y, (float)background_colour.z, 1);
+	glClearDepth(1.0f);
+
+	main_camera.Set(0, 0, camera_w, camera_fov, win_x, win_y, camera_near, camera_far);
+}
+
+void reshape_func(int width, int height)
+{
+	win_x = width;
+	win_y = height;
+
+	if(win_x < 1)
+		win_x = 1;
+
+	if(win_y < 1)
+		win_y = 1;
+
+	glutSetWindow(win_id);
+	glutReshapeWindow(win_x, win_y);
+	glViewport(0, 0, win_x, win_y);
+
+	main_camera.Set(main_camera.u, main_camera.v, main_camera.w, main_camera.fov, win_x, win_y, camera_near, camera_far);
+}
+
+// Text drawing code originally from "GLUT Tutorial -- Bitmap Fonts and Orthogonal Projections" by A R Fernandes
+void render_string(int x, const int y, void *font, const string &text)
+{
+	for(size_t i = 0; i < text.length(); i++)
+	{
+		glRasterPos2i(x, y);
+		glutBitmapCharacter(font, text[i]);
+		x += glutBitmapWidth(font, text[i]) + 1;
+	}
+}
+// End text drawing code.
+
+void draw_objects(void)
+{
+    glDisable(GL_LIGHTING);
+    
+	glPushMatrix();
+  
+
+    glPointSize(2.0);
+    glLineWidth(2.0f);
+
+    
+    glBegin(GL_POINTS);
+    glVertex3d(sun_pos.x, sun_pos.y, sun_pos.z);
+    
+    glColor3f(1.0, 1.0, 1.0);
+    
+    for(size_t i = 0; i < ellipse_positions.size(); i++)
+    glVertex3d(ellipse_positions[i].x, ellipse_positions[i].y, ellipse_positions[i].z);
+    
+    glEnd();
+    
+	//glBegin(GL_TRIANGLES);
+
+	//glColor3f(1.0, 1.0, 1.0);
+
+	//for (size_t i = 0; i < triangles.size(); i++)
+	//{
+	//	glVertex3d(triangles[i].vertex[0].x, triangles[i].vertex[0].y, 0);
+	//	glVertex3d(triangles[i].vertex[1].x, triangles[i].vertex[1].y, 0);
+	//	glVertex3d(triangles[i].vertex[2].x, triangles[i].vertex[2].y, 0);
+
+	//}
+
+	//glEnd();
+
+
+	glLineWidth(1.0f);
+
+	glBegin(GL_LINES);
+	glColor3f(1.0, 0.5, 0.0);
+
+	for (size_t i = 0; i < line_segments.size(); i++)
+	{
+		glVertex3d(line_segments[i].vertex[0].x, line_segments[i].vertex[0].y, 0);
+		glVertex3d(line_segments[i].vertex[1].x, line_segments[i].vertex[1].y, 0);
+	}
+
+	glEnd();
+    
+
+ //   
+ //   
+	//// If we do draw the axis at all, make sure not to draw its outline.
+	//if(true == draw_axis)
+	//{
+	//	glBegin(GL_LINES);
+
+	//	glColor3f(1, 0, 0);
+	//	glVertex3f(0, 0, 0);
+	//	glVertex3f(1, 0, 0);
+	//	glColor3f(0, 1, 0);
+	//	glVertex3f(0, 0, 0);
+	//	glVertex3f(0, 1, 0);
+	//	glColor3f(0, 0, 1);
+	//	glVertex3f(0, 0, 0);
+	//	glVertex3f(0, 0, 1);
+
+	//	glColor3f(0.5, 0.5, 0.5);
+	//	glVertex3f(0, 0, 0);
+	//	glVertex3f(-1, 0, 0);
+	//	glVertex3f(0, 0, 0);
+	//	glVertex3f(0, -1, 0);
+	//	glVertex3f(0, 0, 0);
+	//	glVertex3f(0, 0, -1);
+
+	//	glEnd();
+	//}
+
+	glPopMatrix();
+}
+
+
+
+
+void display_func(void)
+{
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+
+	// Draw the model's components using OpenGL/GLUT primitives.
+	draw_objects();
+
+	if(true == draw_control_list)
+	{
+		// Text drawing code originally from "GLUT Tutorial -- Bitmap Fonts and Orthogonal Projections" by A R Fernandes
+		// http://www.lighthouse3d.com/opengl/glut/index.php?bmpfontortho
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+		gluOrtho2D(0, win_x, 0, win_y);
+		glScaled(1, -1, 1); // Neat. :)
+		glTranslated(0, -win_y, 0); // Neat. :)
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadIdentity();
+
+		glColor3d(control_list_colour.x, control_list_colour.y, control_list_colour.z);
+
+		size_t break_size = 22;
+		size_t start = 20;
+		ostringstream oss;
+
+		render_string(10, static_cast<int>(start), GLUT_BITMAP_HELVETICA_18, string("Mouse controls:"));
+		render_string(10, static_cast<int>(start + 1*break_size), GLUT_BITMAP_HELVETICA_18, string("  LMB + drag: Rotate camera"));
+		render_string(10, static_cast<int>(start + 2*break_size), GLUT_BITMAP_HELVETICA_18, string("  RMB + drag: Zoom camera"));
+
+		render_string(10, static_cast<int>(start + 4*break_size), GLUT_BITMAP_HELVETICA_18, string("Keyboard controls:"));
+        render_string(10, static_cast<int>(start + 5*break_size), GLUT_BITMAP_HELVETICA_18, string("  w: Draw axis"));
+		render_string(10, static_cast<int>(start + 6*break_size), GLUT_BITMAP_HELVETICA_18, string("  e: Draw text"));
+		render_string(10, static_cast<int>(start + 7*break_size), GLUT_BITMAP_HELVETICA_18, string("  u: Rotate camera +u"));
+		render_string(10, static_cast<int>(start + 8*break_size), GLUT_BITMAP_HELVETICA_18, string("  i: Rotate camera -u"));
+		render_string(10, static_cast<int>(start + 9*break_size), GLUT_BITMAP_HELVETICA_18, string("  o: Rotate camera +v"));
+		render_string(10, static_cast<int>(start + 10*break_size), GLUT_BITMAP_HELVETICA_18, string("  p: Rotate camera -v"));
+
+
+		
+        custom_math::vector_3 eye = main_camera.eye;
+		custom_math::vector_3 eye_norm = eye;
+		eye_norm.normalize();
+
+		oss.clear();
+		oss.str("");		
+		oss << "Camera position: " << eye.x << ' ' << eye.y << ' ' << eye.z;
+		render_string(10, static_cast<int>(win_y - 2*break_size), GLUT_BITMAP_HELVETICA_18, oss.str());
+
+		oss.clear();
+		oss.str("");
+		oss << "Camera position (normalized): " << eye_norm.x << ' ' << eye_norm.y << ' ' << eye_norm.z;
+		render_string(10, static_cast<int>(win_y - break_size), GLUT_BITMAP_HELVETICA_18, oss.str());
+
+		glPopMatrix();
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		// End text drawing code.
+	}
+
+	glFlush();
+	glutSwapBuffers();
+}
+
+void keyboard_func(unsigned char key, int x, int y)
+{
+	switch(tolower(key))
+	{
+	case 'w':
+		{
+			draw_axis = !draw_axis;
+			break;
+		}
+	case 'e':
+		{
+			draw_control_list = !draw_control_list;
+			break;
+		}
+	case 'u':
+		{
+			main_camera.u -= u_spacer;
+			main_camera.Set();
+			break;
+		}
+	case 'i':
+		{
+			main_camera.u += u_spacer;
+			main_camera.Set();
+			break;
+		}
+	case 'o':
+		{
+			main_camera.v -= v_spacer;
+			main_camera.Set();
+			break;
+		}
+	case 'p':
+		{
+			main_camera.v += v_spacer;
+			main_camera.Set();
+			break;
+		}
+
+	default:
+		break;
+	}
+}
+
+void mouse_func(int button, int state, int x, int y)
+{
+	if(GLUT_LEFT_BUTTON == button)
+	{
+		if(GLUT_DOWN == state)
+			lmb_down = true;
+		else
+			lmb_down = false;
+	}
+	else if(GLUT_MIDDLE_BUTTON == button)
+	{
+		if(GLUT_DOWN == state)
+			mmb_down = true;
+		else
+			mmb_down = false;
+	}
+	else if(GLUT_RIGHT_BUTTON == button)
+	{
+		if(GLUT_DOWN == state)
+			rmb_down = true;
+		else
+			rmb_down = false;
+	}
+}
+
+void motion_func(int x, int y)
+{
+	int prev_mouse_x = mouse_x;
+	int prev_mouse_y = mouse_y;
+
+	mouse_x = x;
+	mouse_y = y;
+
+	int mouse_delta_x = mouse_x - prev_mouse_x;
+	int mouse_delta_y = prev_mouse_y - mouse_y;
+
+	if(true == lmb_down && (0 != mouse_delta_x || 0 != mouse_delta_y))
+	{
+		main_camera.u -= static_cast<float>(mouse_delta_y)*u_spacer;
+		main_camera.v += static_cast<float>(mouse_delta_x)*v_spacer;
+	}
+	else if(true == rmb_down && (0 != mouse_delta_y))
+	{
+		main_camera.w -= static_cast<float>(mouse_delta_y)*w_spacer;
+
+		if(main_camera.w < 1.1f)
+			main_camera.w = 1.1f;
+
+	}
+
+	main_camera.Set(); // Calculate new camera vectors.
+}
+
+void passive_motion_func(int x, int y)
+{
+	mouse_x = x;
+	mouse_y = y;
+}
+
+
+
+

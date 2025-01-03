@@ -3,7 +3,7 @@
 
 #include "uv_camera.h"
 #include "custom_math.h"
-#include "primitives.h"
+//#include "primitives.h"
 #include "marching_squares.h"
 
 
@@ -56,16 +56,27 @@ void draw_objects(void);
 const double speed_of_light = 299792458;
 const double grav_constant = 6.673e-11;
 const double sun_mass = 1.989e30;
+const double pi = 4.0 * atan(1.0);
+
+double aphelion_distance = 69817079000.0;
 
 custom_math::vector_3 sun_pos(0, 0, 0);
-custom_math::vector_3 mercury_pos(0, 69817079000.0, 0);
+custom_math::vector_3 mercury_pos(0, aphelion_distance, 0);
 custom_math::vector_3 mercury_vel(-38.86e3, 0, 0);
-//custom_math::vector_3 mercury_vel(-sqrt(grav_constant * sun_mass / 69817079000.0), 0, 0);
+//custom_math::vector_3 mercury_vel(-sqrt(grav_constant * sun_mass / aphelion_distance), 0, 0);
 
 vector<line_segment> line_segments;
 vector<triangle> triangles;
 
+struct EllipseParameters {
+	double centerX;
+	double centerY;
+	double semiMajor;
+	double semiMinor;
+	double rotation;
+};
 
+EllipseParameters global_ep;
 
 
 
@@ -84,7 +95,7 @@ uv_camera main_camera;
 
 GLint win_id = 0;
 GLint win_x = 800, win_y = 600;
-float camera_w = 2e11f;
+float camera_w = 5e11f;
 
 float camera_fov = 45;
 float camera_x_transform = 0;
@@ -92,8 +103,8 @@ float camera_y_transform = 0;
 float u_spacer = 0.01f;
 float v_spacer = 0.5f*u_spacer;
 float w_spacer = 0.1f;
-float camera_near = 1;
-float camera_far = 1000000000;
+float camera_near = 0.01f;
+float camera_far = 1e15f;
 
 bool lmb_down = false;
 bool mmb_down = false;

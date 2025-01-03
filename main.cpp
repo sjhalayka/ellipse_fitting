@@ -6,7 +6,7 @@ using namespace Eigen;
 
 // Function to fit an ellipse using Gauss method
 VectorXd fitEllipse(const std::vector<double>& x, const std::vector<double>& y) {
-	int n = x.size();
+	size_t n = x.size();
 	if (n < 5) {
 		std::cerr << "Need at least 5 points to fit an ellipse." << std::endl;
 		return VectorXd(0);
@@ -14,7 +14,7 @@ VectorXd fitEllipse(const std::vector<double>& x, const std::vector<double>& y) 
 
 	// Step 1: Construct the design matrix D
 	MatrixXd D(n, 6);
-	for (int i = 0; i < n; ++i) {
+	for (size_t i = 0; i < n; ++i) {
 		D(i, 0) = x[i] * x[i];
 		D(i, 1) = x[i] * y[i];
 		D(i, 2) = y[i] * y[i];
@@ -55,12 +55,170 @@ VectorXd fitEllipse(const std::vector<double>& x, const std::vector<double>& y) 
 		return VectorXd(0);
 	}
 
-	// The coefficients of the ellipse equation
-	//VectorXd ellipseParams = eigenvectors.col(bestIndex);
-	//std::cout << "Ellipse Parameters: " << ellipseParams.transpose() << std::endl;
-
 	return eigenvectors.col(bestIndex).transpose();
 }
+
+
+
+class GaussEllipseFit {
+public:
+	static VectorXd fitEllipse(const std::vector<double>& x, const std::vector<double>& y) {
+		if (x.size() != y.size() || x.size() < 5) {
+			throw std::runtime_error("Need at least 5 points to fit an ellipse");
+		}
+
+		// Build design matrix D
+		Eigen::MatrixXd D(x.size(), 6);
+		for (size_t i = 0; i < x.size(); i++) {
+			D(i, 0) = x[i] * x[i];
+			D(i, 1) = x[i] * y[i];
+			D(i, 2) = y[i] * y[i];
+			D(i, 3) = x[i];
+			D(i, 4) = y[i];
+			D(i, 5) = 1.0;
+		}
+
+		// Build scatter matrix S
+		Eigen::MatrixXd S = D.transpose() * D;
+
+		// Build constraint matrix C
+		Eigen::MatrixXd C = Eigen::MatrixXd::Zero(6, 6);
+		C(0, 2) = 2;
+		C(2, 0) = 2;
+		C(1, 1) = -1;
+
+		// Solve generalized eigensystem
+		Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges(S, C);
+
+		// Find the positive eigenvalue
+		Eigen::VectorXd eigenvalues = ges.eigenvalues().real();
+		int positiveIndex = -1;
+		for (int i = 0; i < eigenvalues.size(); i++) {
+			if (eigenvalues(i) > 0) {
+				positiveIndex = i;
+				break;
+			}
+		}
+
+		if (positiveIndex == -1) {
+			throw std::runtime_error("No valid ellipse found");
+		}
+
+		// Get the coefficients
+		Eigen::VectorXd coefficients = ges.eigenvectors().real().col(positiveIndex);
+
+		// Extract ellipse parameters
+		return coefficients;// extractEllipseParameters(coefficients);
+	}
+
+	EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients) 
+	{
+		double a = coefficients(0);
+		double b = coefficients(1) / 2;
+		double c = coefficients(2);
+		double d = coefficients(3);
+		double e = coefficients(4);
+		double f = coefficients(5);
+
+		// Calculate center
+		double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
+		double centerY = (2 * a * e - b * d) / (b * b - 4 * a * c);
+
+		// Calculate rotation angle
+		double theta = 0.5 * atan2(b, (a - c));
+
+		// Calculate semi-axes
+		double ct = cos(theta);
+		double st = sin(theta);
+		double ct2 = ct * ct;
+		double st2 = st * st;
+		double a2 = a * ct2 + b * ct * st + c * st2;
+		double c2 = a * st2 - b * ct * st + c * ct2;
+
+		// Calculate constants
+		double term = 2 * (a * centerX * centerX + b * centerX * centerY +
+			c * centerY * centerY + d * centerX + e * centerY + f);
+
+		double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
+		double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
+
+		if (a2 > c2) {
+			std::swap(semiMajor, semiMinor);
+			theta += pi / 2;
+		}
+
+		EllipseParameters params;
+		params.centerX = centerX;
+		params.centerY = centerY;
+		params.semiMajor = semiMajor;
+		params.semiMinor = semiMinor;
+		params.rotation = theta;
+
+		return params;
+	}
+};
+
+
+struct EllipseFoci {
+	double focus1X;
+	double focus1Y;
+	double focus2X;
+	double focus2Y;
+};
+
+
+
+
+EllipseFoci calculateFoci(const EllipseParameters& params) {
+	// c² = a² - b²
+	double c = sqrt(params.semiMajor * params.semiMajor -
+		params.semiMinor * params.semiMinor);
+
+	// Calculate foci before rotation
+	double fx = c;
+	double fy = 0;
+
+	// Rotate foci
+	double fx1 = fx * cos(params.rotation) - fy * sin(params.rotation);
+	double fy1 = fx * sin(params.rotation) + fy * cos(params.rotation);
+
+	// Return both foci (translated to ellipse center)
+	EllipseFoci foci;
+	foci.focus1X = params.centerX + fx1;
+	foci.focus1Y = params.centerY + fy1;
+	foci.focus2X = params.centerX - fx1;
+	foci.focus2Y = params.centerY - fy1;
+
+	return foci;
+}
+
+
+void DrawEllipse(float cx, float cy, float rx, float ry, int num_segments)
+{
+	float theta = 2 * 3.1415926f / float(num_segments);
+	float c = cosf(theta);//precalculate the sine and cosine
+	float s = sinf(theta);
+	float t;
+
+	float x = 1;//we start at angle = 0 
+	float y = 0;
+
+	glBegin(GL_LINE_LOOP);
+	for (int ii = 0; ii < num_segments; ii++)
+	{
+		//apply radius and offset
+		glVertex2f(x * rx + cx, y * ry + cy);//output vertex 
+
+		//apply the rotation matrix
+		t = x;
+		x = c * x - s * y;
+		y = s * t + c * y;
+	}
+	glEnd();
+}
+
+
+
 
 int main(int argc, char **argv)
 {
@@ -195,243 +353,43 @@ void idle_func(void)
 	if (calculated_ellipse == false && frame_count % 123 == 0)
 		ellipse_positions.push_back(positions[positions.size() - 1]);
 
+
+
+
 	if (false == calculated_ellipse && ellipse_positions.size() == 20)
 	{
 		calculated_ellipse = true;
 
-		std::vector<double> x;
-		std::vector<double> y;
+		double avg_distance = 0;
+		vector<double> distances(ellipse_positions.size(), 0);
 
 		for (size_t i = 0; i < ellipse_positions.size(); i++)
 		{
-			x.push_back(ellipse_positions[i].x);
-			y.push_back(ellipse_positions[i].y);
+			avg_distance += ellipse_positions[i].length();
+			distances[i] = ellipse_positions[i].length();
 		}
 
-		VectorXd ellipse_coefficients = fitEllipse(x, y);
+		avg_distance /= ellipse_positions.size();
 
-		const double A = ellipse_coefficients(0);
-		const double B = ellipse_coefficients(1);
-		const double C = ellipse_coefficients(2);
-		const double D = ellipse_coefficients(3);
-		const double E = ellipse_coefficients(4);
-		const double F = ellipse_coefficients(5);
+		global_ep.centerX = 0;
+		global_ep.centerY = 0;
+		global_ep.semiMajor = avg_distance;
+		global_ep.semiMinor = avg_distance;
+		global_ep.rotation = 0;
 
-		cout << ellipse_coefficients << endl;
+		vector<double> errors(ellipse_positions.size(), 0);
 
 
-		// MatrixXd d(3, 3);
-		//d <<
-		//	ellipse_coefficients(0),		0.5 * ellipse_coefficients(1),	0.5 * ellipse_coefficients(3),
-		//	0.5 * ellipse_coefficients(1),	ellipse_coefficients(2),		0.5 * ellipse_coefficients(4),
-		//	0.5 * ellipse_coefficients(3),	0.5 * ellipse_coefficients(4),	ellipse_coefficients(5);
 
 
-		//double d = A * C * F + 0.25 * B * D * E - 0.25 * (A * E * E + C * D * D + F * B * B);
 
-		//cout << C*d << endl;
 
-		//if (C*d < 0)
-		//{
-		//	cout << "good" << endl;
-		//}
-		//else
-		//	cout << "bad" << endl;
 
 
-		size_t px = 2000;
-		size_t py = 2000;
-	
-		vector<double> grid_data(px * py, 0);
 
-		size_t boundary_count = 0;
-		size_t interior_count = 0;
 
-		double template_width = 2e11;
 
-		double inverse_width = 1.0 / template_width;
-		double step_size = template_width / static_cast<double>(px - 1);
-		double template_height = step_size * (py - 1); // Assumes square pixels.
 
-
-		double isovalue = 0;// 1 / F;
-
-		double grid_x_min = -template_width / 2.0;
-		double grid_y_max = template_height / 2.0;
-
-
-		double grid_x_pos = grid_x_min; // Start at minimum x.
-		double grid_y_pos = grid_y_max; // Start at maximum y.
-
-		double min_val = DBL_MAX;
-		double max_val = 0;
-
-		// Begin march.
-		for (short unsigned int y = 0; y < py; y++, grid_y_pos -= step_size, grid_x_pos = grid_x_min)
-		{
-			for (short unsigned int x = 0; x < px; x++, grid_x_pos += step_size)
-			{
-				double x_pos = grid_x_pos;
-				double y_pos = grid_y_pos;
-			
-				//cout << x_pos << " " << y_pos << endl;
-
-				double value =
-					A * x_pos * x_pos +
-					B * x_pos * y_pos +
-					C * y_pos * y_pos +
-					D * x_pos +
-					E * y_pos +
-					F;
-
-				if (value < min_val)
-					min_val = value;
-
-				if (value > max_val)
-					max_val = value;
-
-
-				//cout << value << endl;
-
-				//if (value < 0)
-				//	cout << "greater than zero " << value << endl;
-				//else
-				//	cout << "less than zero " << value << endl;
-
-				//if (std::abs(value) < -1/F)
-				//	value = -1.0;
-				//else
-				//	value = 1.0;
-
-
-				size_t index = x * py + y;
-
-				//if (0 <= (ellipse_coefficients(1) * ellipse_coefficients(1) - 4 * ellipse_coefficients(0) * ellipse_coefficients(2)))
-				//	cout << "bad" << endl;
-
-				grid_data[index] = value;// (rand() % RAND_MAX) / static_cast<double>(RAND_MAX);
-
-				//if (rand() % 2 == 0)
-				//	grid_data[index] = -grid_data[index];
-			}
-		}
-
-		cout << min_val << " " << max_val << endl;
-
-		isovalue = 0.5*(min_val + max_val);
-
-		// Generate geometric primitives using marching squares.
-		grid_square g;
-
-		cout << "Generating geometric primitives..." << endl;
-		cout << endl;
-
-		grid_x_pos = grid_x_min; // Start at minimum x.
-		grid_y_pos = grid_y_max; // Start at maximum y.
-
-		// Begin march.
-		for (short unsigned int y = 0; y < py - 1; y++, grid_y_pos -= step_size, grid_x_pos = grid_x_min)
-		{
-			for (short unsigned int x = 0; x < px - 1; x++, grid_x_pos += step_size)
-			{
-				// Corner vertex order: 03
-				//                      12
-				// e.g.: clockwise, as in OpenGL
-				g.vertex[0] = vertex_2(grid_x_pos, grid_y_pos);
-				g.vertex[1] = vertex_2(grid_x_pos, grid_y_pos - step_size);
-				g.vertex[2] = vertex_2(grid_x_pos + step_size, grid_y_pos - step_size);
-				g.vertex[3] = vertex_2(grid_x_pos + step_size, grid_y_pos);
-
-				g.value[0] = grid_data[y * px + x];
-				g.value[1] = grid_data[(y + 1) * px + x];
-				g.value[2] = grid_data[(y + 1) * px + (x + 1)];
-				g.value[3] = grid_data[y * px + (x + 1)];
-
-				size_t curr_ls_size = line_segments.size();
-				size_t curr_tris_size = triangles.size();
-
-				g.generate_primitives(line_segments, triangles, isovalue);
-
-				size_t new_ls_size = line_segments.size();
-				size_t new_tris_size = triangles.size();
-
-				if (curr_ls_size != new_ls_size)
-					boundary_count++;
-
-				if (curr_tris_size != new_tris_size)
-					interior_count++;
-			}
-		}
-
-
-		// Gather and print final information
-		double length = 0;
-		double area = 0;
-		double sa = 0;
-
-		double x_max = grid_x_min;
-		double x_min = -grid_x_min;
-		double y_max = -grid_y_max;
-		double y_min = grid_y_max;
-
-		for (size_t i = 0; i < line_segments.size(); i++)
-		{
-			length += line_segments[i].length();
-
-			if (line_segments[i].vertex[0].x > x_max)
-				x_max = line_segments[i].vertex[0].x;
-
-			if (line_segments[i].vertex[1].x > x_max)
-				x_max = line_segments[i].vertex[1].x;
-
-			if (line_segments[i].vertex[0].x < x_min)
-				x_min = line_segments[i].vertex[0].x;
-
-			if (line_segments[i].vertex[1].x < x_min)
-				x_min = line_segments[i].vertex[1].x;
-
-			if (line_segments[i].vertex[0].y > y_max)
-				y_max = line_segments[i].vertex[0].y;
-
-			if (line_segments[i].vertex[1].y > y_max)
-				y_max = line_segments[i].vertex[1].y;
-
-			if (line_segments[i].vertex[0].y < y_min)
-				y_min = line_segments[i].vertex[0].y;
-
-			if (line_segments[i].vertex[1].y < y_min)
-				y_min = line_segments[i].vertex[1].y;
-		}
-
-		for (size_t i = 0; i < triangles.size(); i++)
-			area += triangles[i].area();
-
-		if (0 != area)
-			sa = length / area;
-
-		cout << "Geometric primitive info: " << endl;
-		cout << "Vertex x min, max: " << x_min << ", " << x_max << endl;
-		cout << "Vertex y min, max: " << y_min << ", " << y_max << endl;
-		cout << "Line segments:     " << line_segments.size() << endl;
-		cout << "Length:            " << length << endl;
-		cout << "Triangles:         " << triangles.size() << endl;
-		cout << "Area:              " << area << endl;
-		cout << "Length/Area:       " << sa << endl;
-
-		cout << "Box counting dimension of boundary: " << logf(static_cast<float>(boundary_count)) / logf(1.0f / static_cast<float>(step_size)) << endl;
-
-
-
-
-
-
-
-
-
-
-
-
-		//exit(0);
 	}
 
 
@@ -514,10 +472,14 @@ void draw_objects(void)
     glColor3f(1.0, 1.0, 1.0);
     
     for(size_t i = 0; i < ellipse_positions.size(); i++)
-    glVertex3d(ellipse_positions[i].x, ellipse_positions[i].y, ellipse_positions[i].z);
+		glVertex3d(ellipse_positions[i].x, ellipse_positions[i].y, ellipse_positions[i].z);
     
     glEnd();
     
+
+	DrawEllipse(global_ep.centerX, global_ep.centerY, global_ep.semiMajor, global_ep.semiMinor, 100);
+
+
 	//glBegin(GL_TRIANGLES);
 
 	//glColor3f(1.0, 1.0, 1.0);
@@ -533,18 +495,18 @@ void draw_objects(void)
 	//glEnd();
 
 
-	glLineWidth(1.0f);
+	//glLineWidth(1.0f);
 
-	glBegin(GL_LINES);
-	glColor3f(1.0, 0.5, 0.0);
+	//glBegin(GL_LINES);
+	//glColor3f(1.0, 0.5, 0.0);
 
-	for (size_t i = 0; i < line_segments.size(); i++)
-	{
-		glVertex3d(line_segments[i].vertex[0].x, line_segments[i].vertex[0].y, 0);
-		glVertex3d(line_segments[i].vertex[1].x, line_segments[i].vertex[1].y, 0);
-	}
+	//for (size_t i = 0; i < line_segments.size(); i++)
+	//{
+	//	glVertex3d(line_segments[i].vertex[0].x, line_segments[i].vertex[0].y, 0);
+	//	glVertex3d(line_segments[i].vertex[1].x, line_segments[i].vertex[1].y, 0);
+	//}
 
-	glEnd();
+	//glEnd();
     
 
  //   

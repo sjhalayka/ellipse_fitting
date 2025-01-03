@@ -379,6 +379,15 @@ void idle_func(void)
 
 		vector<double> errors(ellipse_positions.size(), 0);
 
+		for (size_t i = 0; i < errors.size(); i++)
+		{
+			double val = (ellipse_positions[i].x* ellipse_positions[i].x / (global_ep.semiMinor * global_ep.semiMinor)) + (ellipse_positions[i].y * ellipse_positions[i].y / (global_ep.semiMajor * global_ep.semiMajor)) - 1.0;
+
+			errors[i] = abs(val);
+
+			cout << errors[i] << endl;
+		}
+
 
 
 
@@ -476,6 +485,8 @@ void draw_objects(void)
     
     glEnd();
     
+
+	glColor3f(1.0, 0.5, 0.0);
 
 	DrawEllipse(global_ep.centerX, global_ep.centerY, global_ep.semiMajor, global_ep.semiMinor, 100);
 

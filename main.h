@@ -2,18 +2,7 @@
 #define main_H
 
 #include "uv_camera.h"
-//#include "custom_math.h"
-#include "primitives.h"
-//#include "marching_squares.h"
-
-#include "opencv2/imgproc.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/highgui.hpp"
-using namespace cv;
-
-#pragma comment(lib, "opencv_world4100.lib")
-
-
+#include "custom_math.h"
 
 #include <cstdlib>
 #include <GL/glut.h>       //GLUT Library
@@ -73,8 +62,8 @@ custom_math::vector_3 mercury_pos(0, aphelion_distance, 0);
 custom_math::vector_3 mercury_vel(-38.86e3 / 2.0, 0, 0);
 //custom_math::vector_3 mercury_vel(-sqrt(grav_constant * sun_mass / aphelion_distance), 0, 0);
 
-vector<line_segment> line_segments;
-vector<triangle> triangles;
+vector<custom_math::line_segment> line_segments;
+vector<custom_math::triangle> triangles;
 
 struct EllipseParameters
 {

@@ -45,6 +45,8 @@ namespace custom_math
 	class circle_4;
 	class line_segment_4;
 	class line_segment_3;
+	class line_segment;
+	class triangle;
 
 	const double pi = 3.14159265358979323846;
 	const double pi_half = pi/2;
@@ -676,6 +678,37 @@ class custom_math::indexed_ngon
 public:
 	vector<size_t> v; // vertices
 };
+
+
+class custom_math::line_segment
+{
+public:
+	custom_math::vector_3 vertex[2];
+
+	double length(void)
+	{
+		return sqrt(pow(vertex[0].x - vertex[1].x, 2.0) + pow(vertex[0].y - vertex[1].y, 2.0));
+	}
+};
+
+
+class custom_math::triangle
+{
+public:
+	custom_math::vector_3 vertex[3];
+
+	inline double area(void)
+	{
+		if (vertex[0] == vertex[1] || vertex[0] == vertex[2] || vertex[1] == vertex[2])
+			return 0;
+
+		double a = (vertex[1].x - vertex[0].x) * (vertex[2].y - vertex[0].y) - (vertex[2].x - vertex[0].x) * (vertex[1].y - vertex[0].y);
+
+		return 0.5 * a;
+	}
+};
+
+
 
 #endif
 //

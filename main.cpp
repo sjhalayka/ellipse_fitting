@@ -193,21 +193,21 @@ EllipseFoci calculateFoci(const EllipseParameters& params) {
 }
 
 
-void DrawEllipse(float cx, float cy, float rx, float ry, int num_segments)
+void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 {
-	float theta = 2 * 3.1415926f / float(num_segments);
-	float c = cosf(theta);//precalculate the sine and cosine
-	float s = sinf(theta);
-	float t;
+	double theta = 2 * pi / double(num_segments);
+	double c = cos(theta);
+	double s = sin(theta);
+	double t;
 
-	float x = 1;//we start at angle = 0 
-	float y = 0;
+	double x = 1;//we start at angle = 0 
+	double y = 0;
 
 	glBegin(GL_LINE_LOOP);
 	for (int ii = 0; ii < num_segments; ii++)
 	{
 		//apply radius and offset
-		glVertex2f(x * rx + cx, y * ry + cy);//output vertex 
+		glVertex2d(x * rx + cx, y * ry + cy);//output vertex 
 
 		//apply the rotation matrix
 		t = x;
@@ -338,64 +338,34 @@ void idle_func(void)
 
 	const double dt = 10000; // 10000 seconds == 2.77777 hours
 
-	// Pick an integrator:
-
-	//proceed_Euler(mercury_pos, mercury_vel, grav_constant, dt);
-	//proceed_RK4(mercury_pos, mercury_vel, grav_constant, dt);
 	proceed_symplectic4(mercury_pos, mercury_vel, grav_constant, dt);
 
     positions.push_back(mercury_pos);
 
-
 	static bool calculated_ellipse = false;
-
 
 	if (calculated_ellipse == false && frame_count % 123 == 0)
 		ellipse_positions.push_back(positions[positions.size() - 1]);
-
-
-
 
 	if (false == calculated_ellipse && ellipse_positions.size() == 20)
 	{
 		calculated_ellipse = true;
 
 		double largest_distance = 0;
-		double avg_distance = 0;
-		vector<double> distances(ellipse_positions.size(), 0);
 
 		for (size_t i = 0; i < ellipse_positions.size(); i++)
-		{
 			if (ellipse_positions[i].length() > largest_distance)
 				largest_distance = ellipse_positions[i].length();
 
-			avg_distance += ellipse_positions[i].length();
-			distances[i] = ellipse_positions[i].length();
-		}
-
-		avg_distance /= ellipse_positions.size();
-
 		global_ep.centerX = 0;
 		global_ep.centerY = 0;
-		global_ep.semiMajor = largest_distance * 2.0;
-		global_ep.semiMinor = largest_distance * 2.0;
+		global_ep.semiMajor = largest_distance;
+		global_ep.semiMinor = largest_distance;
 		global_ep.rotation = 0;
 
-		vector<double> global_errors(ellipse_positions.size(), 0);
-		double global_total_error = 0;
+		double global_total_error = DBL_MAX;
 
-		global_total_error = 0;
-
-		for (size_t i = 0; i < global_errors.size(); i++)
-		{
-			const double val = (ellipse_positions[i].x * ellipse_positions[i].x / (global_ep.semiMinor * global_ep.semiMinor)) + (ellipse_positions[i].y * ellipse_positions[i].y / (global_ep.semiMajor * global_ep.semiMajor)) - 1.0;
-
-			global_errors[i] = abs(val);
-
-			global_total_error += global_errors[i];
-		}
-
-		for (size_t k = 0; k < 100000; k++)
+		for (size_t k = 0; k < 10000; k++)
 		{
 			EllipseParameters local_ep;
 			local_ep.centerX = global_ep.centerX;
@@ -416,41 +386,31 @@ void idle_func(void)
 					continue;
 			}
 
-			vector<double> local_errors(global_errors.size(), 0);
 			double local_total_error = 0;
 
-			EllipseFoci ef = calculateFoci(local_ep);
+			for (size_t j = 0; j < ellipse_positions.size(); j++)
+				local_total_error += abs((ellipse_positions[j].x * ellipse_positions[j].x / (local_ep.semiMinor * local_ep.semiMinor)) + (ellipse_positions[j].y * ellipse_positions[j].y / (local_ep.semiMajor * local_ep.semiMajor)) - 1.0);
 
-			for (size_t j = 0; j < local_errors.size(); j++)
-			{
-				const double val = (ellipse_positions[j].x * ellipse_positions[j].x / (local_ep.semiMinor * local_ep.semiMinor)) + (ellipse_positions[j].y * ellipse_positions[j].y / (local_ep.semiMajor * local_ep.semiMajor)) - 1.0;
-				local_errors[j] = abs(val);
-
-				local_total_error += local_errors[j];
-			}
-
-			static double last_local_total_error = DBL_MAX;
+			//static double last_local_total_error = DBL_MAX;
 
 			if (local_total_error < global_total_error)
 			{
-				if (last_local_total_error < local_total_error)
-					break;
+				//if (last_local_total_error < local_total_error)
+				//	continue;
 
-				last_local_total_error = local_total_error;
-
-				const EllipseFoci ef = calculateFoci(local_ep);
+				//last_local_total_error = local_total_error;
 
 				global_ep.centerX = 0;
-				global_ep.centerY = ef.focus1X;
+				global_ep.centerY = calculateFoci(local_ep).focus1X;
 				global_ep.semiMajor = local_ep.semiMajor;
 				global_ep.semiMinor = local_ep.semiMinor;
 				global_ep.rotation = 0;
 
 				global_total_error = local_total_error;
+
 			}
 		}
 	}
-
 
     glutPostRedisplay();
 }

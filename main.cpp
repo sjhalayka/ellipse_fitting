@@ -394,7 +394,7 @@ void idle_func(void)
 
 		for (size_t i = 0; i < global_errors.size(); i++)
 		{
-			const double val = (ellipse_positions[i].x * ellipse_positions[i].x / (global_ep.semiMinor * global_ep.semiMinor)) + (ellipse_positions[i].y * ellipse_positions[i].y / (global_ep.semiMajor * global_ep.semiMajor)) - 1.0;
+			const double val =  (ellipse_positions[i].x * ellipse_positions[i].x / (global_ep.semiMinor * global_ep.semiMinor)) + (ellipse_positions[i].y * ellipse_positions[i].y / (global_ep.semiMajor * global_ep.semiMajor)) - 1.0;
 
 			global_errors[i] = abs(val);
 
@@ -408,7 +408,7 @@ void idle_func(void)
 
 
 
-			const size_t refinement_count = 100;
+			const size_t refinement_count = 1;
 
 
 
@@ -430,7 +430,7 @@ void idle_func(void)
 				for (size_t i = 0; i < refinement_count; i++)
 				{
 					EllipseParameters local_ep;
-					local_ep.centerX = global_ep.centerX;
+					local_ep.centerX = 0;// global_ep.centerX;
 					local_ep.centerY = 0;// global_ep.centerY;
 					local_ep.semiMajor = global_ep.semiMajor;
 					local_ep.semiMinor = global_ep.semiMinor * 0.99;
@@ -449,23 +449,22 @@ void idle_func(void)
 						local_total_error += local_errors[j];
 					}
 
-					//static double last_local_total_error = DBL_MAX;
+					static double last_local_total_error = DBL_MAX;
 
 					if (local_total_error < global_total_error)
 					{
-						//if (last_local_total_error < local_total_error)
-					//		continue;
+						if (last_local_total_error < local_total_error)
+							break;
 
-					//	last_local_total_error = local_total_error;
+						last_local_total_error = local_total_error;
 
 						EllipseFoci ef = calculateFoci(local_ep);
 
-						global_ep.centerX = local_ep.centerX;
-						global_ep.centerY = ef.focus1X * 0.9;
+						global_ep.centerX = 0;// local_ep.centerX;
+						global_ep.centerY = ef.focus1X;
 						global_ep.semiMajor = local_ep.semiMajor;
 						global_ep.semiMinor = local_ep.semiMinor;
 						global_ep.rotation = 0;
-
 
 						global_total_error = 0;
 
@@ -479,19 +478,14 @@ void idle_func(void)
 						}
 					}
 
-					//global_total_error = local_total_error;
 				}
-
-
-
-
 			}
 			else
 			{
 				for (size_t i = 0; i < refinement_count; i++)
 				{
 					EllipseParameters local_ep;
-					local_ep.centerX = global_ep.centerX;
+					local_ep.centerX = 0;// global_ep.centerX;
 					local_ep.centerY = 0;// global_ep.centerY;
 					local_ep.semiMajor = global_ep.semiMajor * 0.99;
 					local_ep.semiMinor = global_ep.semiMinor;
@@ -512,22 +506,22 @@ void idle_func(void)
 						local_total_error += local_errors[j];
 					}
 
-					//static double last_local_total_error = DBL_MAX;
+					static double last_local_total_error = DBL_MAX;
 
 					if (local_total_error < global_total_error)
 					{
-						//if (last_local_total_error < local_total_error)
-						//	continue;
+						if (last_local_total_error < local_total_error)
+							break;
 
-						//last_local_total_error = local_total_error;
+						last_local_total_error = local_total_error;
 
 						EllipseFoci ef = calculateFoci(local_ep);
 
 						cout << local_total_error << " " << global_total_error << endl;
 						cout << "lala" << endl;
 
-						global_ep.centerX = local_ep.centerX;
-						global_ep.centerY = ef.focus1X * 0.9;
+						global_ep.centerX = 0;// local_ep.centerX;
+						global_ep.centerY = ef.focus1X;
 						global_ep.semiMajor = local_ep.semiMajor;
 						global_ep.semiMinor = local_ep.semiMinor;
 						global_ep.rotation = 0;
@@ -542,13 +536,12 @@ void idle_func(void)
 
 							global_total_error += global_errors[i];
 						}
-
 					}
 				}
 			}
 
-
-			//global_ep.semiMajor = 0.5*global_ep.semiMajor;
+//
+			//global_ep.semiMajor = global_ep.semiMajor;
 			
 
 			//for (size_t i = 0; i < refinement_count; i++)
@@ -713,20 +706,6 @@ void draw_objects(void)
     
 
 	glColor3f(1.0, 0.5, 0.0);
-	//global_ep.centerX = local_ep.centerX;
-	//global_ep.centerY = local_ep.centerY;
-	//global_ep.semiMajor = local_ep.semiMajor;
-	//global_ep.semiMinor = local_ep.semiMinor;
-	//global_ep.rotation = 0;
-
-
-	EllipseFoci ef = calculateFoci(global_ep);
-
-	//cout << ef.focus1X << " " << ef.focus1Y << endl;
-	//cout << ef.focus2X << " " << ef.focus2Y << endl;
-	//cout << endl;
-
-	//glTranslated(0, ef.focus1Y, 0);
 
 	DrawEllipse(global_ep.centerX, global_ep.centerY, global_ep.semiMinor, global_ep.semiMajor, 100);
 

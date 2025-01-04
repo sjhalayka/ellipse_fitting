@@ -360,7 +360,6 @@ void idle_func(void)
 	{
 		calculated_ellipse = true;
 
-
 		double largest_distance = 0;
 		double avg_distance = 0;
 		vector<double> distances(ellipse_positions.size(), 0);
@@ -378,246 +377,78 @@ void idle_func(void)
 
 		global_ep.centerX = 0;
 		global_ep.centerY = 0;
-		global_ep.semiMajor = largest_distance;
-		global_ep.semiMinor = largest_distance;
+		global_ep.semiMajor = largest_distance * 2.0;
+		global_ep.semiMinor = largest_distance * 2.0;
 		global_ep.rotation = 0;
 
-
-
-
-		 
 		vector<double> global_errors(ellipse_positions.size(), 0);
 		double global_total_error = 0;
-
 
 		global_total_error = 0;
 
 		for (size_t i = 0; i < global_errors.size(); i++)
 		{
-			const double val =  (ellipse_positions[i].x * ellipse_positions[i].x / (global_ep.semiMinor * global_ep.semiMinor)) + (ellipse_positions[i].y * ellipse_positions[i].y / (global_ep.semiMajor * global_ep.semiMajor)) - 1.0;
+			const double val = (ellipse_positions[i].x * ellipse_positions[i].x / (global_ep.semiMinor * global_ep.semiMinor)) + (ellipse_positions[i].y * ellipse_positions[i].y / (global_ep.semiMajor * global_ep.semiMajor)) - 1.0;
 
 			global_errors[i] = abs(val);
 
 			global_total_error += global_errors[i];
 		}
 
-		for (size_t k = 0; k < 1000; k++)
+		for (size_t k = 0; k < 100000; k++)
 		{
-
-
-
-
-
-			const size_t refinement_count = 1;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+			EllipseParameters local_ep;
+			local_ep.centerX = global_ep.centerX;
+			local_ep.centerY = global_ep.centerY;
+			local_ep.rotation = 0;
 
 			if (k % 2 == 0)
 			{
-				for (size_t i = 0; i < refinement_count; i++)
-				{
-					EllipseParameters local_ep;
-					local_ep.centerX = 0;// global_ep.centerX;
-					local_ep.centerY = 0;// global_ep.centerY;
-					local_ep.semiMajor = global_ep.semiMajor;
-					local_ep.semiMinor = global_ep.semiMinor * 0.99;
-					local_ep.rotation = 0;
-
-					vector<double> local_errors(global_errors.size(), 0);
-					double local_total_error = 0;
-
-					EllipseFoci ef = calculateFoci(local_ep);
-
-					for (size_t j = 0; j < local_errors.size(); j++)
-					{
-						const double val = (ellipse_positions[j].x * ellipse_positions[j].x / (local_ep.semiMinor * local_ep.semiMinor)) + (ellipse_positions[j].y * ellipse_positions[j].y / (local_ep.semiMajor * local_ep.semiMajor)) - 1.0;
-						local_errors[j] = abs(val);
-
-						local_total_error += local_errors[j];
-					}
-
-					static double last_local_total_error = DBL_MAX;
-
-					if (local_total_error < global_total_error)
-					{
-						if (last_local_total_error < local_total_error)
-							break;
-
-						last_local_total_error = local_total_error;
-
-						EllipseFoci ef = calculateFoci(local_ep);
-
-						global_ep.centerX = 0;// local_ep.centerX;
-						global_ep.centerY = ef.focus1X;
-						global_ep.semiMajor = local_ep.semiMajor;
-						global_ep.semiMinor = local_ep.semiMinor;
-						global_ep.rotation = 0;
-
-						global_total_error = 0;
-
-						for (size_t i = 0; i < global_errors.size(); i++)
-						{
-							const double val = (ellipse_positions[i].x * ellipse_positions[i].x / (global_ep.semiMinor * global_ep.semiMinor)) + (ellipse_positions[i].y * ellipse_positions[i].y / (global_ep.semiMajor * global_ep.semiMajor)) - 1.0;
-
-							global_errors[i] = abs(val);
-
-							global_total_error += global_errors[i];
-						}
-					}
-
-				}
+				local_ep.semiMajor = global_ep.semiMajor;
+				local_ep.semiMinor = global_ep.semiMinor * 0.99;
 			}
 			else
 			{
-				for (size_t i = 0; i < refinement_count; i++)
-				{
-					EllipseParameters local_ep;
-					local_ep.centerX = 0;// global_ep.centerX;
-					local_ep.centerY = 0;// global_ep.centerY;
-					local_ep.semiMajor = global_ep.semiMajor * 0.99;
-					local_ep.semiMinor = global_ep.semiMinor;
-					local_ep.rotation = 0;
+				local_ep.semiMajor = global_ep.semiMajor * 0.99;
+				local_ep.semiMinor = global_ep.semiMinor;
 
-					if (local_ep.semiMajor <= local_ep.semiMinor)
-						break;
-
-					vector<double> local_errors(global_errors.size(), 0);
-					double local_total_error = 0;
-
-
-					for (size_t j = 0; j < local_errors.size(); j++)
-					{
-						const double val = (ellipse_positions[j].x * ellipse_positions[j].x / (local_ep.semiMinor * local_ep.semiMinor)) + (ellipse_positions[j].y * ellipse_positions[j].y / (local_ep.semiMajor * local_ep.semiMajor)) - 1.0;
-						local_errors[j] = abs(val);
-
-						local_total_error += local_errors[j];
-					}
-
-					static double last_local_total_error = DBL_MAX;
-
-					if (local_total_error < global_total_error)
-					{
-						if (last_local_total_error < local_total_error)
-							break;
-
-						last_local_total_error = local_total_error;
-
-						EllipseFoci ef = calculateFoci(local_ep);
-
-						cout << local_total_error << " " << global_total_error << endl;
-						cout << "lala" << endl;
-
-						global_ep.centerX = 0;// local_ep.centerX;
-						global_ep.centerY = ef.focus1X;
-						global_ep.semiMajor = local_ep.semiMajor;
-						global_ep.semiMinor = local_ep.semiMinor;
-						global_ep.rotation = 0;
-
-						global_total_error = 0;
-
-						for (size_t i = 0; i < global_errors.size(); i++)
-						{
-							const double val = (ellipse_positions[i].x * ellipse_positions[i].x / (global_ep.semiMinor * global_ep.semiMinor)) + (ellipse_positions[i].y * ellipse_positions[i].y / (global_ep.semiMajor * global_ep.semiMajor)) - 1.0;
-
-							global_errors[i] = abs(val);
-
-							global_total_error += global_errors[i];
-						}
-					}
-				}
+				if (local_ep.semiMajor <= local_ep.semiMinor)
+					continue;
 			}
 
-//
-			//global_ep.semiMajor = global_ep.semiMajor;
-			
+			vector<double> local_errors(global_errors.size(), 0);
+			double local_total_error = 0;
 
-			//for (size_t i = 0; i < refinement_count; i++)
-			//{
-			//	EllipseParameters local_ep;
-			//	local_ep.centerX = global_ep.centerX;
-			//	local_ep.centerY = global_ep.centerY;
-			//	local_ep.semiMajor = global_ep.semiMajor * 0.99;
-			//	local_ep.semiMinor = global_ep.semiMinor;
-			//	local_ep.rotation = 0;
+			EllipseFoci ef = calculateFoci(local_ep);
 
-			//	//if (local_ep.semiMajor <= local_ep.semiMinor)
-			//	//{
-			//	//	k = 1000;
-			//	//	//EllipseFoci ef = calculateFoci(local_ep);
+			for (size_t j = 0; j < local_errors.size(); j++)
+			{
+				const double val = (ellipse_positions[j].x * ellipse_positions[j].x / (local_ep.semiMinor * local_ep.semiMinor)) + (ellipse_positions[j].y * ellipse_positions[j].y / (local_ep.semiMajor * local_ep.semiMajor)) - 1.0;
+				local_errors[j] = abs(val);
 
-			//	//	//global_ep.centerX = local_ep.centerX;
-			//	//	//global_ep.centerY = local_ep.centerY;
-			//	//	//global_ep.semiMajor = local_ep.semiMajor;
-			//	//	//global_ep.semiMinor = local_ep.semiMinor;
-			//	//	//global_ep.rotation = 0;
+				local_total_error += local_errors[j];
+			}
 
-			//	//	break;
-			//	//}
+			static double last_local_total_error = DBL_MAX;
 
-			//	vector<double> local_errors(global_errors.size(), 0);
-			//	double local_total_error = 0;
+			if (local_total_error < global_total_error)
+			{
+				if (last_local_total_error < local_total_error)
+					break;
 
+				last_local_total_error = local_total_error;
 
+				const EllipseFoci ef = calculateFoci(local_ep);
 
-			//	for (size_t j = 0; j < local_errors.size(); j++)
-			//	{
-			//		const double val = (ellipse_positions[j].x * ellipse_positions[j].x / (local_ep.semiMinor * local_ep.semiMinor)) + (ellipse_positions[j].y * ellipse_positions[j].y / (local_ep.semiMajor * local_ep.semiMajor)) - 1.0;
-			//		local_errors[j] = abs(val);
+				global_ep.centerX = 0;
+				global_ep.centerY = ef.focus1X;
+				global_ep.semiMajor = local_ep.semiMajor;
+				global_ep.semiMinor = local_ep.semiMinor;
+				global_ep.rotation = 0;
 
-			//		local_total_error += local_errors[j];
-			//	}
-
-
-
-
-			//	static double last_local_total_error = DBL_MAX;
-
-			//	if (local_total_error < global_total_error)
-			//	{
-			//		if (last_local_total_error < local_total_error)
-			//			break;
-
-			//		last_local_total_error = local_total_error;
-
-			//		EllipseFoci ef = calculateFoci(local_ep);
-
-			//		cout << local_total_error << " " << global_total_error << endl;
-
-			//		global_ep.centerX = local_ep.centerX;
-			//		global_ep.centerY = ef.focus1X;// local_ep.centerY;
-			//		global_ep.semiMajor = local_ep.semiMajor;
-			//		global_ep.semiMinor = local_ep.semiMinor;
-			//		global_ep.rotation = 0;
-
-			//		//global_total_error = local_total_error;
-
-			//		break;
-			//	}
-			//}
-
-
-
-
-
-
+				global_total_error = local_total_error;
+			}
 		}
-
-
-
-
 	}
 
 

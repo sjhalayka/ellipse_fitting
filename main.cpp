@@ -359,31 +359,29 @@ void idle_func(void)
 
 		global_ep.centerX = 0;
 		global_ep.centerY = 0;
-		global_ep.semiMajor = largest_distance;
-		global_ep.semiMinor = largest_distance;
+		global_ep.semiMajor = 10*largest_distance;
+		global_ep.semiMinor = 10*largest_distance;
 		global_ep.rotation = 0;
 
 		double global_total_error = DBL_MAX;
 
-		for (size_t k = 0; k < 10000; k++)
+		for (size_t i = 1; i < 10000; i++)
 		{
 			EllipseParameters local_ep;
+
 			local_ep.centerX = global_ep.centerX;
 			local_ep.centerY = global_ep.centerY;
 			local_ep.rotation = 0;
 
-			if (k % 2 == 0)
+			if (i % 2 == 0)
 			{
 				local_ep.semiMajor = global_ep.semiMajor;
-				local_ep.semiMinor = global_ep.semiMinor * 0.99;
+				local_ep.semiMinor = global_ep.semiMinor * 0.9;
 			}
 			else
 			{
-				local_ep.semiMajor = global_ep.semiMajor * 0.99;
+				local_ep.semiMajor = global_ep.semiMajor * 0.9;
 				local_ep.semiMinor = global_ep.semiMinor;
-
-				if (local_ep.semiMajor <= local_ep.semiMinor)
-					continue;
 			}
 
 			double local_total_error = 0;
@@ -391,15 +389,8 @@ void idle_func(void)
 			for (size_t j = 0; j < ellipse_positions.size(); j++)
 				local_total_error += abs((ellipse_positions[j].x * ellipse_positions[j].x / (local_ep.semiMinor * local_ep.semiMinor)) + (ellipse_positions[j].y * ellipse_positions[j].y / (local_ep.semiMajor * local_ep.semiMajor)) - 1.0);
 
-			//static double last_local_total_error = DBL_MAX;
-
 			if (local_total_error < global_total_error)
 			{
-				//if (last_local_total_error < local_total_error)
-				//	continue;
-
-				//last_local_total_error = local_total_error;
-
 				global_ep.centerX = 0;
 				global_ep.centerY = calculateFoci(local_ep).focus1X;
 				global_ep.semiMajor = local_ep.semiMajor;
@@ -407,7 +398,6 @@ void idle_func(void)
 				global_ep.rotation = 0;
 
 				global_total_error = local_total_error;
-
 			}
 		}
 	}

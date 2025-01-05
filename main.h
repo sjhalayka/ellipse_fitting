@@ -70,22 +70,19 @@ custom_math::vector_3 mercury_vel(-38.86e3*0.5, 0, 0);
 //custom_math::vector_3 mercury_pos(-aphelion_distance, 0, 0);
 //custom_math::vector_3 mercury_vel(0, -38.86e3 * 0.5, 0);
 
+//custom_math::vector_3 mercury_pos(-aphelion_distance, aphelion_distance, 0);
+//custom_math::vector_3 mercury_vel(0, -38.86e3, 0);
+
+
+
+
+
 
 //custom_math::vector_3 mercury_vel(-sqrt(grav_constant * sun_mass / aphelion_distance), 0, 0);
 
 vector<custom_math::line_segment> line_segments;
 vector<custom_math::triangle> triangles;
 
-struct EllipseParameters
-{
-	double centerX = 0;
-	double centerY = 0;
-	double semiMajor = 0;
-	double semiMinor = 0;
-	double angle = 0;
-};
-
-EllipseParameters global_ep;
 
 
 

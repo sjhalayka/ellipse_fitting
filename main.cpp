@@ -330,10 +330,20 @@ void proceed_symplectic4(custom_math::vector_3& pos, custom_math::vector_3& vel,
 
 
 
-// Define a point structure
-struct point {
+struct Point {
 	double x, y;
 };
+
+class EllipseParameters
+{
+public:
+	double centerX = 0;
+	double centerY = 0;
+	double semiMajor = 0;
+	double semiMinor = 0;
+	double angle = 0;
+};
+
 
 EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 {
@@ -381,12 +391,12 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 	return params;
 }
 
-
 // Solve the ellipse equation
-void fitEllipse(const std::vector<point>& points, const point& focus) {
+EllipseParameters fitEllipse(const std::vector<Point>& points, const Point& focus) 
+{
 	if (points.size() != 5) {
 		std::cerr << "Error: Exactly 5 points are required.\n";
-		return;
+		return EllipseParameters();
 	}
 
 	Eigen::MatrixXd A(5, 6);
@@ -402,11 +412,11 @@ void fitEllipse(const std::vector<point>& points, const point& focus) {
 		A(i, 3) = x;           // Coefficient for x
 		A(i, 4) = y;           // Coefficient for y
 		A(i, 5) = 1;           // Constant term
-		b(i) = -1;              // Right-hand side is zero
+		b(i) = -1;             // Right-hand side is -1. This is important!
 	}
 
 	// Solve for the ellipse parameters
-	Eigen::VectorXd ellipseParams = A.colPivHouseholderQr().solve(b);
+	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
 
 	// Extract parameters
 	double A_ = ellipseParams(0);
@@ -416,38 +426,14 @@ void fitEllipse(const std::vector<point>& points, const point& focus) {
 	double E_ = ellipseParams(4);
 	double F_ = ellipseParams(5);
 
-	EllipseParameters x = extractEllipseParameters(ellipseParams);
-
-	cout << x.centerX << " " << x.centerY << " " << x.semiMinor << " " << x.semiMajor << " " << x.angle << endl;
-
-
-
-	global_ep = x;
-
-
-
-	//// Output the general equation of the ellipse
-	//std::cout << "Ellipse Equation: "
-	//	<< A_ << "x^2 + "
-	//	<< B_ << "xy + "
-	//	<< C_ << "y^2 + "
-	//	<< D_ << "x + "
-	//	<< E_ << "y + "
-	//	<< F_ << " = 0\n";
-
-	// Additional step: Verify focus constraint
-	// This step requires checking the ellipse parameters with the given focus
-	// and ensuring it lies on the ellipse's focal axis.
-	// (Implement numerical checks or adjust parameters if needed.)
+	return extractEllipseParameters(ellipseParams);
 }
 
-
+EllipseParameters global_ep;
 
 void idle_func(void)
 {
 	static size_t frame_count = 0;
-
-
 
 	const double dt = 10000; // 10000 seconds == 2.77777 hours
 
@@ -457,24 +443,23 @@ void idle_func(void)
 
 	static bool calculated_ellipse = false;
 
-	if (calculated_ellipse == false && frame_count % 50 == 0)
+	if (calculated_ellipse == false && frame_count % 100 == 0)
 		ellipse_positions.push_back(positions[positions.size() - 1]);
 
 	if (false == calculated_ellipse && ellipse_positions.size() == 5)
 	{
 		calculated_ellipse = true;
 
-		vector<point> points;
+		vector<Point> points;
 
 		for (size_t i = 0; i < ellipse_positions.size(); i++)
-			points.push_back(point(ellipse_positions[i].x, ellipse_positions[i].y));
+			points.push_back(Point(ellipse_positions[i].x, ellipse_positions[i].y));
 
-		point focus(0, 0);
+		Point focus(0, 0);
 
+		EllipseParameters ep = fitEllipse(points, focus);
 
-		fitEllipse(points, focus);
-
-
+		global_ep = ep;
 	}
 
 	frame_count++;

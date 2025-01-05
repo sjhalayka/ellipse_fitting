@@ -419,13 +419,13 @@ EllipseParameters fitEllipse(const std::vector<Point>& points, const Point& focu
 	// Solve for the ellipse parameters
 	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
 
-	// Extract parameters
-	double A_ = ellipseParams(0);
-	double B_ = ellipseParams(1);
-	double C_ = ellipseParams(2);
-	double D_ = ellipseParams(3);
-	double E_ = ellipseParams(4);
-	double F_ = ellipseParams(5);
+	//// Extract parameters
+	//double A_ = ellipseParams(0);
+	//double B_ = ellipseParams(1);
+	//double C_ = ellipseParams(2);
+	//double D_ = ellipseParams(3);
+	//double E_ = ellipseParams(4);
+	//double F_ = ellipseParams(5);
 
 	return extractEllipseParameters(ellipseParams);
 }
@@ -444,7 +444,7 @@ void idle_func(void)
 
 	static bool calculated_ellipse = false;
 
-	if (calculated_ellipse == false && frame_count % 100 == 0)
+	if (calculated_ellipse == false && frame_count % 200 == 0)
 		ellipse_positions.push_back(positions[positions.size() - 1]);
 
 	if (false == calculated_ellipse && ellipse_positions.size() == 5)

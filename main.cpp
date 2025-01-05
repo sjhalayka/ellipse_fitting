@@ -3,195 +3,195 @@
 
 #include <Eigen/Dense>
 using namespace Eigen;
-
-// Function to fit an ellipse using Gauss method
-VectorXd fitEllipse(const std::vector<double>& x, const std::vector<double>& y) {
-	size_t n = x.size();
-	if (n < 5) {
-		std::cerr << "Need at least 5 points to fit an ellipse." << std::endl;
-		return VectorXd(0);
-	}
-
-	// Step 1: Construct the design matrix D
-	MatrixXd D(n, 6);
-	for (size_t i = 0; i < n; ++i) {
-		D(i, 0) = x[i] * x[i];
-		D(i, 1) = x[i] * y[i];
-		D(i, 2) = y[i] * y[i];
-		D(i, 3) = x[i];
-		D(i, 4) = y[i];
-		D(i, 5) = 1.0;
-	}
-
-	// Step 2: Compute the scatter matrix S = D^T * D
-	MatrixXd S = D.transpose() * D;
-
-	// Step 3: Define the constraint matrix C
-	MatrixXd C(6, 6);
-	C << 0, 0, 2, 0, 0, 0,
-		0, -1, 0, 0, 0, 0,
-		2, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0;
-
-	// Step 4: Solve the generalized eigenvalue problem S * v = ? * C * v
-	EigenSolver<MatrixXd> solver(S);
-	MatrixXd eigenvalues = solver.eigenvalues().real();
-	MatrixXd eigenvectors = solver.eigenvectors().real();
-
-	// Find the solution satisfying the ellipse constraint
-	int bestIndex = -1;
-	for (int i = 0; i < eigenvalues.size(); ++i) {
-		VectorXd v = eigenvectors.col(i);
-		if (v.transpose() * C * v > 0) {
-			bestIndex = i;
-			break;
-		}
-	}
-
-	if (bestIndex == -1) {
-		std::cerr << "No valid ellipse found." << std::endl;
-		return VectorXd(0);
-	}
-
-	return eigenvectors.col(bestIndex).transpose();
-}
-
-
-
-class GaussEllipseFit {
-public:
-	static VectorXd fitEllipse(const std::vector<double>& x, const std::vector<double>& y) {
-		if (x.size() != y.size() || x.size() < 5) {
-			throw std::runtime_error("Need at least 5 points to fit an ellipse");
-		}
-
-		// Build design matrix D
-		Eigen::MatrixXd D(x.size(), 6);
-		for (size_t i = 0; i < x.size(); i++) {
-			D(i, 0) = x[i] * x[i];
-			D(i, 1) = x[i] * y[i];
-			D(i, 2) = y[i] * y[i];
-			D(i, 3) = x[i];
-			D(i, 4) = y[i];
-			D(i, 5) = 1.0;
-		}
-
-		// Build scatter matrix S
-		Eigen::MatrixXd S = D.transpose() * D;
-
-		// Build constraint matrix C
-		Eigen::MatrixXd C = Eigen::MatrixXd::Zero(6, 6);
-		C(0, 2) = 2;
-		C(2, 0) = 2;
-		C(1, 1) = -1;
-
-		// Solve generalized eigensystem
-		Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges(S, C);
-
-		// Find the positive eigenvalue
-		Eigen::VectorXd eigenvalues = ges.eigenvalues().real();
-		int positiveIndex = -1;
-		for (int i = 0; i < eigenvalues.size(); i++) {
-			if (eigenvalues(i) > 0) {
-				positiveIndex = i;
-				break;
-			}
-		}
-
-		if (positiveIndex == -1) {
-			throw std::runtime_error("No valid ellipse found");
-		}
-
-		// Get the coefficients
-		Eigen::VectorXd coefficients = ges.eigenvectors().real().col(positiveIndex);
-
-		// Extract ellipse parameters
-		return coefficients;// extractEllipseParameters(coefficients);
-	}
-
-	EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
-	{
-		double a = coefficients(0);
-		double b = coefficients(1) / 2;
-		double c = coefficients(2);
-		double d = coefficients(3);
-		double e = coefficients(4);
-		double f = coefficients(5);
-
-		// Calculate center
-		double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
-		double centerY = (2 * a * e - b * d) / (b * b - 4 * a * c);
-
-		// Calculate rotation angle
-		double theta = 0.5 * atan2(b, (a - c));
-
-		// Calculate semi-axes
-		double ct = cos(theta);
-		double st = sin(theta);
-		double ct2 = ct * ct;
-		double st2 = st * st;
-		double a2 = a * ct2 + b * ct * st + c * st2;
-		double c2 = a * st2 - b * ct * st + c * ct2;
-
-		// Calculate constants
-		double term = 2 * (a * centerX * centerX + b * centerX * centerY +
-			c * centerY * centerY + d * centerX + e * centerY + f);
-
-		double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
-		double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
-
-		if (a2 > c2) {
-			std::swap(semiMajor, semiMinor);
-			theta += pi / 2;
-		}
-
-		EllipseParameters params;
-		params.centerX = centerX;
-		params.centerY = centerY;
-		params.semiMajor = semiMajor;
-		params.semiMinor = semiMinor;
-
-		return params;
-	}
-};
-
-
-struct EllipseFoci {
-	double focus1X;
-	double focus1Y;
-	double focus2X;
-	double focus2Y;
-};
-
-
-
-
-EllipseFoci calculateFoci(const EllipseParameters& params) {
-	// c² = a² - b²
-	double c = sqrt(params.semiMajor * params.semiMajor -
-		params.semiMinor * params.semiMinor);
-
-	// Calculate foci before rotation
-	double fx = c;
-	double fy = 0;
-
-	// Rotate foci
-	double fx1 = fx * cos(0) - fy * sin(0);
-	double fy1 = fx * sin(0) + fy * cos(0);
-
-	// Return both foci (translated to ellipse center)
-	EllipseFoci foci;
-	foci.focus1X = params.centerX + fx1;
-	foci.focus1Y = params.centerY + fy1;
-	foci.focus2X = params.centerX - fx1;
-	foci.focus2Y = params.centerY - fy1;
-
-	return foci;
-}
-
-
+//
+//// Function to fit an ellipse using Gauss method
+//VectorXd fitellipse(const std::vector<double>& x, const std::vector<double>& y) {
+//	size_t n = x.size();
+//	if (n < 5) {
+//		std::cerr << "Need at least 5 points to fit an ellipse." << std::endl;
+//		return VectorXd(0);
+//	}
+//
+//	// Step 1: Construct the design matrix D
+//	MatrixXd D(n, 6);
+//	for (size_t i = 0; i < n; ++i) {
+//		D(i, 0) = x[i] * x[i];
+//		D(i, 1) = x[i] * y[i];
+//		D(i, 2) = y[i] * y[i];
+//		D(i, 3) = x[i];
+//		D(i, 4) = y[i];
+//		D(i, 5) = 1.0;
+//	}
+//
+//	// Step 2: Compute the scatter matrix S = D^T * D
+//	MatrixXd S = D.transpose() * D;
+//
+//	// Step 3: Define the constraint matrix C
+//	MatrixXd C(6, 6);
+//	C << 0, 0, 2, 0, 0, 0,
+//		0, -1, 0, 0, 0, 0,
+//		2, 0, 0, 0, 0, 0,
+//		0, 0, 0, 0, 0, 0,
+//		0, 0, 0, 0, 0, 0,
+//		0, 0, 0, 0, 0, 0;
+//
+//	// Step 4: Solve the generalized eigenvalue problem S * v = ? * C * v
+//	EigenSolver<MatrixXd> solver(S);
+//	MatrixXd eigenvalues = solver.eigenvalues().real();
+//	MatrixXd eigenvectors = solver.eigenvectors().real();
+//
+//	// Find the solution satisfying the ellipse constraint
+//	int bestIndex = -1;
+//	for (int i = 0; i < eigenvalues.size(); ++i) {
+//		VectorXd v = eigenvectors.col(i);
+//		if (v.transpose() * C * v > 0) {
+//			bestIndex = i;
+//			break;
+//		}
+//	}
+//
+//	if (bestIndex == -1) {
+//		std::cerr << "No valid ellipse found." << std::endl;
+//		return VectorXd(0);
+//	}
+//
+//	return eigenvectors.col(bestIndex).transpose();
+//}
+//
+//
+//
+//class GaussellipseFit {
+//public:
+//	static VectorXd fitellipse(const std::vector<double>& x, const std::vector<double>& y) {
+//		if (x.size() != y.size() || x.size() < 5) {
+//			throw std::runtime_error("Need at least 5 points to fit an ellipse");
+//		}
+//
+//		// Build design matrix D
+//		Eigen::MatrixXd D(x.size(), 6);
+//		for (size_t i = 0; i < x.size(); i++) {
+//			D(i, 0) = x[i] * x[i];
+//			D(i, 1) = x[i] * y[i];
+//			D(i, 2) = y[i] * y[i];
+//			D(i, 3) = x[i];
+//			D(i, 4) = y[i];
+//			D(i, 5) = 1.0;
+//		}
+//
+//		// Build scatter matrix S
+//		Eigen::MatrixXd S = D.transpose() * D;
+//
+//		// Build constraint matrix C
+//		Eigen::MatrixXd C = Eigen::MatrixXd::Zero(6, 6);
+//		C(0, 2) = 2;
+//		C(2, 0) = 2;
+//		C(1, 1) = -1;
+//
+//		// Solve generalized eigensystem
+//		Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges(S, C);
+//
+//		// Find the positive eigenvalue
+//		Eigen::VectorXd eigenvalues = ges.eigenvalues().real();
+//		int positiveIndex = -1;
+//		for (int i = 0; i < eigenvalues.size(); i++) {
+//			if (eigenvalues(i) > 0) {
+//				positiveIndex = i;
+//				break;
+//			}
+//		}
+//
+//		if (positiveIndex == -1) {
+//			throw std::runtime_error("No valid ellipse found");
+//		}
+//
+//		// Get the coefficients
+//		Eigen::VectorXd coefficients = ges.eigenvectors().real().col(positiveIndex);
+//
+//		// Extract ellipse parameters
+//		return coefficients;// extractellipseParameters(coefficients);
+//	}
+//
+//	ellipseParameters extractellipseParameters(const Eigen::VectorXd& coefficients)
+//	{
+//		double a = coefficients(0);
+//		double b = coefficients(1) / 2;
+//		double c = coefficients(2);
+//		double d = coefficients(3);
+//		double e = coefficients(4);
+//		double f = coefficients(5);
+//
+//		// Calculate center
+//		double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
+//		double centerY = (2 * a * e - b * d) / (b * b - 4 * a * c);
+//
+//		// Calculate rotation angle
+//		double theta = 0.5 * atan2(b, (a - c));
+//
+//		// Calculate semi-axes
+//		double ct = cos(theta);
+//		double st = sin(theta);
+//		double ct2 = ct * ct;
+//		double st2 = st * st;
+//		double a2 = a * ct2 + b * ct * st + c * st2;
+//		double c2 = a * st2 - b * ct * st + c * ct2;
+//
+//		// Calculate constants
+//		double term = 2 * (a * centerX * centerX + b * centerX * centerY +
+//			c * centerY * centerY + d * centerX + e * centerY + f);
+//
+//		double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
+//		double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
+//
+//		if (a2 > c2) {
+//			std::swap(semiMajor, semiMinor);
+//			theta += pi / 2;
+//		}
+//
+//		ellipseParameters params;
+//		params.centerX = centerX;
+//		params.centerY = centerY;
+//		params.semiMajor = semiMajor;
+//		params.semiMinor = semiMinor;
+//
+//		return params;
+//	}
+//};
+//
+//
+//struct ellipseFoci {
+//	double focus1X;
+//	double focus1Y;
+//	double focus2X;
+//	double focus2Y;
+//};
+//
+//
+//
+//
+//ellipseFoci calculateFoci(const ellipseParameters& params) {
+//	// c² = a² - b²
+//	double c = sqrt(params.semiMajor * params.semiMajor -
+//		params.semiMinor * params.semiMinor);
+//
+//	// Calculate foci before rotation
+//	double fx = c;
+//	double fy = 0;
+//
+//	// Rotate foci
+//	double fx1 = fx * cos(0) - fy * sin(0);
+//	double fy1 = fx * sin(0) + fy * cos(0);
+//
+//	// Return both foci (translated to ellipse center)
+//	ellipseFoci foci;
+//	foci.focus1X = params.centerX + fx1;
+//	foci.focus1Y = params.centerY + fy1;
+//	foci.focus2X = params.centerX - fx1;
+//	foci.focus2Y = params.centerY - fy1;
+//
+//	return foci;
+//}
+//
+//
 void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 {
 	double theta = 2 * pi / double(num_segments);
@@ -329,11 +329,125 @@ void proceed_symplectic4(custom_math::vector_3& pos, custom_math::vector_3& vel,
 
 
 
+
+// Define a point structure
+struct point {
+	double x, y;
+};
+
+EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
+{
+	double a = coefficients(0);
+	double b = coefficients(1) / 2;
+	double c = coefficients(2);
+	double d = coefficients(3);
+	double e = coefficients(4);
+	double f = 1;
+
+	// Calculate center
+	double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
+	double centerY = (2 * a * e - b * d) / (b * b - 4 * a * c);
+
+	// Calculate rotation angle
+	double theta = 0.5 * atan2(b, (a - c));
+
+	// Calculate semi-axes
+	double ct = cos(theta);
+	double st = sin(theta);
+	double ct2 = ct * ct;
+	double st2 = st * st;
+	double a2 = a * ct2 + b * ct * st + c * st2;
+	double c2 = a * st2 - b * ct * st + c * ct2;
+
+	// Calculate constants
+	double term = 2 * (a * centerX * centerX + b * centerX * centerY +
+		c * centerY * centerY + d * centerX + e * centerY + f);
+
+	double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
+	double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
+
+	if (a2 > c2) {
+		std::swap(semiMajor, semiMinor);
+		theta += pi / 2;
+	}
+
+	EllipseParameters params;
+	params.centerX = centerX;
+	params.centerY = centerY;
+	params.semiMajor = semiMajor;
+	params.semiMinor = semiMinor;
+	params.angle = theta;
+
+	return params;
+}
+
+
+// Solve the ellipse equation
+void fitEllipse(const std::vector<point>& points, const point& focus) {
+	if (points.size() != 5) {
+		std::cerr << "Error: Exactly 5 points are required.\n";
+		return;
+	}
+
+	Eigen::MatrixXd A(5, 6);
+	Eigen::VectorXd b(5);
+
+	// Fill the matrix A and vector b with the equations from the points
+	for (size_t i = 0; i < 5; ++i) {
+		double x = points[i].x;
+		double y = points[i].y;
+		A(i, 0) = x * x;       // Coefficient for x^2
+		A(i, 1) = x * y;       // Coefficient for xy
+		A(i, 2) = y * y;       // Coefficient for y^2
+		A(i, 3) = x;           // Coefficient for x
+		A(i, 4) = y;           // Coefficient for y
+		A(i, 5) = 1;           // Constant term
+		b(i) = -1;              // Right-hand side is zero
+	}
+
+	// Solve for the ellipse parameters
+	Eigen::VectorXd ellipseParams = A.colPivHouseholderQr().solve(b);
+
+	// Extract parameters
+	double A_ = ellipseParams(0);
+	double B_ = ellipseParams(1);
+	double C_ = ellipseParams(2);
+	double D_ = ellipseParams(3);
+	double E_ = ellipseParams(4);
+	double F_ = ellipseParams(5);
+
+	EllipseParameters x = extractEllipseParameters(ellipseParams);
+
+	cout << x.centerX << " " << x.centerY << " " << x.semiMinor << " " << x.semiMajor << " " << x.angle << endl;
+
+
+
+	global_ep = x;
+
+
+
+	//// Output the general equation of the ellipse
+	//std::cout << "Ellipse Equation: "
+	//	<< A_ << "x^2 + "
+	//	<< B_ << "xy + "
+	//	<< C_ << "y^2 + "
+	//	<< D_ << "x + "
+	//	<< E_ << "y + "
+	//	<< F_ << " = 0\n";
+
+	// Additional step: Verify focus constraint
+	// This step requires checking the ellipse parameters with the given focus
+	// and ensuring it lies on the ellipse's focal axis.
+	// (Implement numerical checks or adjust parameters if needed.)
+}
+
+
+
 void idle_func(void)
 {
 	static size_t frame_count = 0;
 
-	frame_count++;
+
 
 	const double dt = 10000; // 10000 seconds == 2.77777 hours
 
@@ -343,61 +457,27 @@ void idle_func(void)
 
 	static bool calculated_ellipse = false;
 
-	if (calculated_ellipse == false && frame_count % 123 == 0)
+	if (calculated_ellipse == false && frame_count % 50 == 0)
 		ellipse_positions.push_back(positions[positions.size() - 1]);
 
-	if (false == calculated_ellipse && ellipse_positions.size() == 20)
+	if (false == calculated_ellipse && ellipse_positions.size() == 5)
 	{
 		calculated_ellipse = true;
 
-		double largest_distance = 0;
+		vector<point> points;
 
 		for (size_t i = 0; i < ellipse_positions.size(); i++)
-			if (ellipse_positions[i].length() > largest_distance)
-				largest_distance = ellipse_positions[i].length();
+			points.push_back(point(ellipse_positions[i].x, ellipse_positions[i].y));
 
-		global_ep.centerX = 0;
-		global_ep.centerY = 0;
-		global_ep.semiMajor = 10 * largest_distance;
-		global_ep.semiMinor = 10 * largest_distance;
+		point focus(0, 0);
 
-		double global_total_error = DBL_MAX;
 
-		for (size_t i = 1; i < 10000; i++)
-		{
-			EllipseParameters local_ep;
+		fitEllipse(points, focus);
 
-			local_ep.centerX = global_ep.centerX;
-			local_ep.centerY = global_ep.centerY;
 
-			if (i % 2 == 0)
-			{
-				local_ep.semiMajor = global_ep.semiMajor;
-				local_ep.semiMinor = global_ep.semiMinor * 0.9;
-			}
-			else
-			{
-				local_ep.semiMajor = global_ep.semiMajor * 0.9;
-				local_ep.semiMinor = global_ep.semiMinor;
-			}
-
-			double local_total_error = 0;
-
-			for (size_t j = 0; j < ellipse_positions.size(); j++)
-				local_total_error += abs((ellipse_positions[j].x * ellipse_positions[j].x / (local_ep.semiMinor * local_ep.semiMinor)) + (ellipse_positions[j].y * ellipse_positions[j].y / (local_ep.semiMajor * local_ep.semiMajor)) - 1.0);
-
-			if (local_total_error < global_total_error)
-			{
-				global_ep.centerX = 0;
-				global_ep.centerY = 0.5*calculateFoci(local_ep).focus1X;
-				global_ep.semiMajor = local_ep.semiMajor;
-				global_ep.semiMinor = local_ep.semiMinor;
-
-				global_total_error = local_total_error;
-			}
-		}
 	}
 
+	frame_count++;
 	glutPostRedisplay();
 }
 
@@ -467,8 +547,8 @@ void draw_objects(void)
 	glPushMatrix();
 
 
-	glPointSize(2.0);
-	glLineWidth(2.0f);
+	glPointSize(6.0);
+	glLineWidth(1.0f);
 
 
 	glBegin(GL_POINTS);
@@ -483,6 +563,11 @@ void draw_objects(void)
 
 
 	glColor3f(1.0, 0.5, 0.0);
+
+
+	glTranslated(global_ep.centerX, global_ep.centerY, 0);
+	glRotated(global_ep.angle / (2 * pi) * 360.0, 0, 0, 1);
+	glTranslated(-global_ep.centerX, -global_ep.centerY, 0);
 
 	DrawEllipse(global_ep.centerX, global_ep.centerY, global_ep.semiMinor, global_ep.semiMajor, 100);
 

@@ -59,7 +59,7 @@ double aphelion_distance = 69817079000.0;
 
 custom_math::vector_3 sun_pos(0, 0, 0);
 custom_math::vector_3 mercury_pos(0, aphelion_distance, 0);
-custom_math::vector_3 mercury_vel(-38.86e3 / 2.0, 0, 0);
+custom_math::vector_3 mercury_vel(-38.86e3, 0, 0);
 //custom_math::vector_3 mercury_vel(-sqrt(grav_constant * sun_mass / aphelion_distance), 0, 0);
 
 vector<custom_math::line_segment> line_segments;
@@ -71,7 +71,6 @@ struct EllipseParameters
 	double centerY;
 	double semiMajor;
 	double semiMinor;
-	double rotation;
 };
 
 EllipseParameters global_ep;

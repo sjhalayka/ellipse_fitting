@@ -111,7 +111,7 @@ public:
 		return coefficients;// extractEllipseParameters(coefficients);
 	}
 
-	EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients) 
+	EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 	{
 		double a = coefficients(0);
 		double b = coefficients(1) / 2;
@@ -152,7 +152,6 @@ public:
 		params.centerY = centerY;
 		params.semiMajor = semiMajor;
 		params.semiMinor = semiMinor;
-		params.rotation = theta;
 
 		return params;
 	}
@@ -179,8 +178,8 @@ EllipseFoci calculateFoci(const EllipseParameters& params) {
 	double fy = 0;
 
 	// Rotate foci
-	double fx1 = fx * cos(params.rotation) - fy * sin(params.rotation);
-	double fy1 = fx * sin(params.rotation) + fy * cos(params.rotation);
+	double fx1 = fx * cos(0) - fy * sin(0);
+	double fy1 = fx * sin(0) + fy * cos(0);
 
 	// Return both foci (translated to ellipse center)
 	EllipseFoci foci;
@@ -220,7 +219,7 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
 	cout << setprecision(20) << endl;
 
@@ -254,21 +253,21 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-custom_math::vector_3 grav_acceleration(const custom_math::vector_3 &pos, const custom_math::vector_3 &vel, const double G)
+custom_math::vector_3 grav_acceleration(const custom_math::vector_3& pos, const custom_math::vector_3& vel, const double G)
 {
 	custom_math::vector_3 grav_dir = sun_pos - pos;
 
 	double distance = grav_dir.length();
 
 	grav_dir.normalize();
-	custom_math::vector_3 accel = grav_dir * (G*sun_mass / pow(distance, 2.0));
+	custom_math::vector_3 accel = grav_dir * (G * sun_mass / pow(distance, 2.0));
 
 	return accel;
 }
 
 
 
-void proceed_Euler(custom_math::vector_3 &pos, custom_math::vector_3 &vel, const double G, const double dt)
+void proceed_Euler(custom_math::vector_3& pos, custom_math::vector_3& vel, const double G, const double dt)
 {
 	custom_math::vector_3 accel = grav_acceleration(pos, vel, G);
 
@@ -276,21 +275,21 @@ void proceed_Euler(custom_math::vector_3 &pos, custom_math::vector_3 &vel, const
 	pos += vel * dt;
 }
 
-void proceed_RK4(custom_math::vector_3 &pos, custom_math::vector_3 &vel, const double G, const double dt)
+void proceed_RK4(custom_math::vector_3& pos, custom_math::vector_3& vel, const double G, const double dt)
 {
 	static const double one_sixth = 1.0 / 6.0;
 
 	custom_math::vector_3 k1_velocity = vel;
 	custom_math::vector_3 k1_acceleration = grav_acceleration(pos, k1_velocity, G);
-	custom_math::vector_3 k2_velocity = vel + k1_acceleration * dt*0.5;
-	custom_math::vector_3 k2_acceleration = grav_acceleration(pos + k1_velocity * dt*0.5, k2_velocity, G);
-	custom_math::vector_3 k3_velocity = vel + k2_acceleration * dt*0.5;
-	custom_math::vector_3 k3_acceleration = grav_acceleration(pos + k2_velocity * dt*0.5, k3_velocity, G);
+	custom_math::vector_3 k2_velocity = vel + k1_acceleration * dt * 0.5;
+	custom_math::vector_3 k2_acceleration = grav_acceleration(pos + k1_velocity * dt * 0.5, k2_velocity, G);
+	custom_math::vector_3 k3_velocity = vel + k2_acceleration * dt * 0.5;
+	custom_math::vector_3 k3_acceleration = grav_acceleration(pos + k2_velocity * dt * 0.5, k3_velocity, G);
 	custom_math::vector_3 k4_velocity = vel + k3_acceleration * dt;
 	custom_math::vector_3 k4_acceleration = grav_acceleration(pos + k3_velocity * dt, k4_velocity, G);
 
-	vel += (k1_acceleration + (k2_acceleration + k3_acceleration)*2.0 + k4_acceleration)*one_sixth*dt;
-	pos += (k1_velocity + (k2_velocity + k3_velocity)*2.0 + k4_velocity)*one_sixth*dt;
+	vel += (k1_acceleration + (k2_acceleration + k3_acceleration) * 2.0 + k4_acceleration) * one_sixth * dt;
+	pos += (k1_velocity + (k2_velocity + k3_velocity) * 2.0 + k4_velocity) * one_sixth * dt;
 }
 
 
@@ -324,7 +323,7 @@ void proceed_symplectic4(custom_math::vector_3& pos, custom_math::vector_3& vel,
 	vel += grav_acceleration(pos, vel, G) * d[2] * dt;
 
 	pos += vel * c[3] * dt;
- //	vel += grav_acceleration(pos, vel, G) * d[3] * dt; // last element d[3] is always 0
+	//	vel += grav_acceleration(pos, vel, G) * d[3] * dt; // last element d[3] is always 0
 }
 
 
@@ -340,7 +339,7 @@ void idle_func(void)
 
 	proceed_symplectic4(mercury_pos, mercury_vel, grav_constant, dt);
 
-    positions.push_back(mercury_pos);
+	positions.push_back(mercury_pos);
 
 	static bool calculated_ellipse = false;
 
@@ -359,9 +358,8 @@ void idle_func(void)
 
 		global_ep.centerX = 0;
 		global_ep.centerY = 0;
-		global_ep.semiMajor = 10*largest_distance;
-		global_ep.semiMinor = 10*largest_distance;
-		global_ep.rotation = 0;
+		global_ep.semiMajor = 10 * largest_distance;
+		global_ep.semiMinor = 10 * largest_distance;
 
 		double global_total_error = DBL_MAX;
 
@@ -371,7 +369,6 @@ void idle_func(void)
 
 			local_ep.centerX = global_ep.centerX;
 			local_ep.centerY = global_ep.centerY;
-			local_ep.rotation = 0;
 
 			if (i % 2 == 0)
 			{
@@ -392,31 +389,30 @@ void idle_func(void)
 			if (local_total_error < global_total_error)
 			{
 				global_ep.centerX = 0;
-				global_ep.centerY = calculateFoci(local_ep).focus1X;
+				global_ep.centerY = 0.5*calculateFoci(local_ep).focus1X;
 				global_ep.semiMajor = local_ep.semiMajor;
 				global_ep.semiMinor = local_ep.semiMinor;
-				global_ep.rotation = 0;
 
 				global_total_error = local_total_error;
 			}
 		}
 	}
 
-    glutPostRedisplay();
+	glutPostRedisplay();
 }
 
-void init_opengl(const int &width, const int &height)
+void init_opengl(const int& width, const int& height)
 {
 	win_x = width;
 	win_y = height;
 
-	if(win_x < 1)
+	if (win_x < 1)
 		win_x = 1;
 
-	if(win_y < 1)
+	if (win_y < 1)
 		win_y = 1;
 
-	glutInitDisplayMode(GLUT_RGB|GLUT_DOUBLE|GLUT_DEPTH);
+	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowPosition(0, 0);
 	glutInitWindowSize(win_x, win_y);
 	win_id = glutCreateWindow("orbit");
@@ -439,10 +435,10 @@ void reshape_func(int width, int height)
 	win_x = width;
 	win_y = height;
 
-	if(win_x < 1)
+	if (win_x < 1)
 		win_x = 1;
 
-	if(win_y < 1)
+	if (win_y < 1)
 		win_y = 1;
 
 	glutSetWindow(win_id);
@@ -453,9 +449,9 @@ void reshape_func(int width, int height)
 }
 
 // Text drawing code originally from "GLUT Tutorial -- Bitmap Fonts and Orthogonal Projections" by A R Fernandes
-void render_string(int x, const int y, void *font, const string &text)
+void render_string(int x, const int y, void* font, const string& text)
 {
-	for(size_t i = 0; i < text.length(); i++)
+	for (size_t i = 0; i < text.length(); i++)
 	{
 		glRasterPos2i(x, y);
 		glutBitmapCharacter(font, text[i]);
@@ -466,25 +462,25 @@ void render_string(int x, const int y, void *font, const string &text)
 
 void draw_objects(void)
 {
-    glDisable(GL_LIGHTING);
-    
+	glDisable(GL_LIGHTING);
+
 	glPushMatrix();
-  
 
-    glPointSize(2.0);
-    glLineWidth(2.0f);
 
-    
-    glBegin(GL_POINTS);
-    glVertex3d(sun_pos.x, sun_pos.y, sun_pos.z);
-    
-    glColor3f(1.0, 1.0, 1.0);
-    
-    for(size_t i = 0; i < ellipse_positions.size(); i++)
+	glPointSize(2.0);
+	glLineWidth(2.0f);
+
+
+	glBegin(GL_POINTS);
+	glVertex3d(sun_pos.x, sun_pos.y, sun_pos.z);
+
+	glColor3f(1.0, 1.0, 1.0);
+
+	for (size_t i = 0; i < ellipse_positions.size(); i++)
 		glVertex3d(ellipse_positions[i].x, ellipse_positions[i].y, ellipse_positions[i].z);
-    
-    glEnd();
-    
+
+	glEnd();
+
 
 	glColor3f(1.0, 0.5, 0.0);
 
@@ -518,7 +514,7 @@ void draw_objects(void)
 	//}
 
 	//glEnd();
-    
+
 
  //   
  //   
@@ -556,12 +552,12 @@ void draw_objects(void)
 
 void display_func(void)
 {
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Draw the model's components using OpenGL/GLUT primitives.
 	draw_objects();
 
-	if(true == draw_control_list)
+	if (true == draw_control_list)
 	{
 		// Text drawing code originally from "GLUT Tutorial -- Bitmap Fonts and Orthogonal Projections" by A R Fernandes
 		// http://www.lighthouse3d.com/opengl/glut/index.php?bmpfontortho
@@ -582,27 +578,27 @@ void display_func(void)
 		ostringstream oss;
 
 		render_string(10, static_cast<int>(start), GLUT_BITMAP_HELVETICA_18, string("Mouse controls:"));
-		render_string(10, static_cast<int>(start + 1*break_size), GLUT_BITMAP_HELVETICA_18, string("  LMB + drag: Rotate camera"));
-		render_string(10, static_cast<int>(start + 2*break_size), GLUT_BITMAP_HELVETICA_18, string("  RMB + drag: Zoom camera"));
+		render_string(10, static_cast<int>(start + 1 * break_size), GLUT_BITMAP_HELVETICA_18, string("  LMB + drag: Rotate camera"));
+		render_string(10, static_cast<int>(start + 2 * break_size), GLUT_BITMAP_HELVETICA_18, string("  RMB + drag: Zoom camera"));
 
-		render_string(10, static_cast<int>(start + 4*break_size), GLUT_BITMAP_HELVETICA_18, string("Keyboard controls:"));
-        render_string(10, static_cast<int>(start + 5*break_size), GLUT_BITMAP_HELVETICA_18, string("  w: Draw axis"));
-		render_string(10, static_cast<int>(start + 6*break_size), GLUT_BITMAP_HELVETICA_18, string("  e: Draw text"));
-		render_string(10, static_cast<int>(start + 7*break_size), GLUT_BITMAP_HELVETICA_18, string("  u: Rotate camera +u"));
-		render_string(10, static_cast<int>(start + 8*break_size), GLUT_BITMAP_HELVETICA_18, string("  i: Rotate camera -u"));
-		render_string(10, static_cast<int>(start + 9*break_size), GLUT_BITMAP_HELVETICA_18, string("  o: Rotate camera +v"));
-		render_string(10, static_cast<int>(start + 10*break_size), GLUT_BITMAP_HELVETICA_18, string("  p: Rotate camera -v"));
+		render_string(10, static_cast<int>(start + 4 * break_size), GLUT_BITMAP_HELVETICA_18, string("Keyboard controls:"));
+		render_string(10, static_cast<int>(start + 5 * break_size), GLUT_BITMAP_HELVETICA_18, string("  w: Draw axis"));
+		render_string(10, static_cast<int>(start + 6 * break_size), GLUT_BITMAP_HELVETICA_18, string("  e: Draw text"));
+		render_string(10, static_cast<int>(start + 7 * break_size), GLUT_BITMAP_HELVETICA_18, string("  u: Rotate camera +u"));
+		render_string(10, static_cast<int>(start + 8 * break_size), GLUT_BITMAP_HELVETICA_18, string("  i: Rotate camera -u"));
+		render_string(10, static_cast<int>(start + 9 * break_size), GLUT_BITMAP_HELVETICA_18, string("  o: Rotate camera +v"));
+		render_string(10, static_cast<int>(start + 10 * break_size), GLUT_BITMAP_HELVETICA_18, string("  p: Rotate camera -v"));
 
 
-		
-        custom_math::vector_3 eye = main_camera.eye;
+
+		custom_math::vector_3 eye = main_camera.eye;
 		custom_math::vector_3 eye_norm = eye;
 		eye_norm.normalize();
 
 		oss.clear();
-		oss.str("");		
+		oss.str("");
 		oss << "Camera position: " << eye.x << ' ' << eye.y << ' ' << eye.z;
-		render_string(10, static_cast<int>(win_y - 2*break_size), GLUT_BITMAP_HELVETICA_18, oss.str());
+		render_string(10, static_cast<int>(win_y - 2 * break_size), GLUT_BITMAP_HELVETICA_18, oss.str());
 
 		oss.clear();
 		oss.str("");
@@ -621,42 +617,42 @@ void display_func(void)
 
 void keyboard_func(unsigned char key, int x, int y)
 {
-	switch(tolower(key))
+	switch (tolower(key))
 	{
 	case 'w':
-		{
-			draw_axis = !draw_axis;
-			break;
-		}
+	{
+		draw_axis = !draw_axis;
+		break;
+	}
 	case 'e':
-		{
-			draw_control_list = !draw_control_list;
-			break;
-		}
+	{
+		draw_control_list = !draw_control_list;
+		break;
+	}
 	case 'u':
-		{
-			main_camera.u -= u_spacer;
-			main_camera.Set();
-			break;
-		}
+	{
+		main_camera.u -= u_spacer;
+		main_camera.Set();
+		break;
+	}
 	case 'i':
-		{
-			main_camera.u += u_spacer;
-			main_camera.Set();
-			break;
-		}
+	{
+		main_camera.u += u_spacer;
+		main_camera.Set();
+		break;
+	}
 	case 'o':
-		{
-			main_camera.v -= v_spacer;
-			main_camera.Set();
-			break;
-		}
+	{
+		main_camera.v -= v_spacer;
+		main_camera.Set();
+		break;
+	}
 	case 'p':
-		{
-			main_camera.v += v_spacer;
-			main_camera.Set();
-			break;
-		}
+	{
+		main_camera.v += v_spacer;
+		main_camera.Set();
+		break;
+	}
 
 	default:
 		break;
@@ -665,23 +661,23 @@ void keyboard_func(unsigned char key, int x, int y)
 
 void mouse_func(int button, int state, int x, int y)
 {
-	if(GLUT_LEFT_BUTTON == button)
+	if (GLUT_LEFT_BUTTON == button)
 	{
-		if(GLUT_DOWN == state)
+		if (GLUT_DOWN == state)
 			lmb_down = true;
 		else
 			lmb_down = false;
 	}
-	else if(GLUT_MIDDLE_BUTTON == button)
+	else if (GLUT_MIDDLE_BUTTON == button)
 	{
-		if(GLUT_DOWN == state)
+		if (GLUT_DOWN == state)
 			mmb_down = true;
 		else
 			mmb_down = false;
 	}
-	else if(GLUT_RIGHT_BUTTON == button)
+	else if (GLUT_RIGHT_BUTTON == button)
 	{
-		if(GLUT_DOWN == state)
+		if (GLUT_DOWN == state)
 			rmb_down = true;
 		else
 			rmb_down = false;
@@ -699,16 +695,16 @@ void motion_func(int x, int y)
 	int mouse_delta_x = mouse_x - prev_mouse_x;
 	int mouse_delta_y = prev_mouse_y - mouse_y;
 
-	if(true == lmb_down && (0 != mouse_delta_x || 0 != mouse_delta_y))
+	if (true == lmb_down && (0 != mouse_delta_x || 0 != mouse_delta_y))
 	{
-		main_camera.u -= static_cast<float>(mouse_delta_y)*u_spacer;
-		main_camera.v += static_cast<float>(mouse_delta_x)*v_spacer;
+		main_camera.u -= static_cast<float>(mouse_delta_y) * u_spacer;
+		main_camera.v += static_cast<float>(mouse_delta_x) * v_spacer;
 	}
-	else if(true == rmb_down && (0 != mouse_delta_y))
+	else if (true == rmb_down && (0 != mouse_delta_y))
 	{
-		main_camera.w -= static_cast<float>(mouse_delta_y)*w_spacer;
+		main_camera.w -= static_cast<float>(mouse_delta_y) * w_spacer;
 
-		if(main_camera.w < 1.1f)
+		if (main_camera.w < 1.1f)
 			main_camera.w = 1.1f;
 
 	}
@@ -721,7 +717,6 @@ void passive_motion_func(int x, int y)
 	mouse_x = x;
 	mouse_y = y;
 }
-
 
 
 

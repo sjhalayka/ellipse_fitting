@@ -391,7 +391,7 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 	return params;
 }
 
-// Solve the ellipse equation
+
 EllipseParameters fitEllipse(const std::vector<Point>& points, const Point& focus) 
 {
 	if (points.size() != 5) {
@@ -403,7 +403,8 @@ EllipseParameters fitEllipse(const std::vector<Point>& points, const Point& focu
 	Eigen::VectorXd b(5);
 
 	// Fill the matrix A and vector b with the equations from the points
-	for (size_t i = 0; i < 5; ++i) {
+	for (size_t i = 0; i < 5; ++i) 
+	{
 		double x = points[i].x;
 		double y = points[i].y;
 		A(i, 0) = x * x;       // Coefficient for x^2
@@ -549,12 +550,15 @@ void draw_objects(void)
 
 	glColor3f(1.0, 0.5, 0.0);
 
+	glPushMatrix();
 
 	glTranslated(global_ep.centerX, global_ep.centerY, 0);
 	glRotated(global_ep.angle / (2 * pi) * 360.0, 0, 0, 1);
 	glTranslated(-global_ep.centerX, -global_ep.centerY, 0);
 
 	DrawEllipse(global_ep.centerX, global_ep.centerY, global_ep.semiMinor, global_ep.semiMajor, 100);
+
+	glPopMatrix();
 
 
 	//glBegin(GL_TRIANGLES);

@@ -425,9 +425,9 @@ EllipseParameters fitEllipse(const std::vector<Point>& points, const Point& focu
 		b(i) = -1;             // Right-hand side is -1. This is important!
 	}
 
-	cout << A << endl;
+	//cout << A << endl;
 
-	cout << b << endl;
+	//cout << b << endl;
 
 	// Solve for the ellipse parameters
 	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
@@ -707,14 +707,14 @@ void idle_func(void)
 		global_ep = ep;
 
 		const double ecc = sqrt(1.0 - pow(ep.semiMinor/ep.semiMajor, 2.0));
+		const double arg_perigee = ep.angle - pi / 2;
 
-		// Create an orbit (example values for a typical LEO satellite)
 		OrbitalParameters orbit(
 			ep.semiMajor,    // Semi-major axis
 			ecc,     // Eccentricity
 			0.0,       // Inclination (radians)
 			0.0,	// RAAN (radians)
-			-pi/2.0 + ep.angle,       // Argument of perigee (radians)
+			arg_perigee,       // Argument of perigee (radians)
 			0.0        // Initial mean anomaly (radians)
 		);
 

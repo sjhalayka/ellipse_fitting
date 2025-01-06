@@ -392,18 +392,27 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 }
 
 
+
+
+
+
+
+
+
 EllipseParameters fitEllipse(const std::vector<Point>& points, const Point& focus) 
 {
-	if (points.size() != 5) {
-		std::cerr << "Error: Exactly 5 points are required.\n";
+	const size_t num_points = 5;
+
+	if (points.size() != num_points) {
+		std::cerr << "Error: Exactly " << num_points << " points are required.\n";
 		return EllipseParameters();
 	}
 
-	Eigen::MatrixXd A(5, 6);
-	Eigen::VectorXd b(5);
+	Eigen::MatrixXd A(num_points, 6);
+	Eigen::VectorXd b(num_points);
 
 	// Fill the matrix A and vector b with the equations from the points
-	for (size_t i = 0; i < 5; ++i) 
+	for (size_t i = 0; i < num_points; ++i)
 	{
 		double x = points[i].x;
 		double y = points[i].y;
@@ -426,6 +435,8 @@ EllipseParameters fitEllipse(const std::vector<Point>& points, const Point& focu
 	//double D_ = ellipseParams(3);
 	//double E_ = ellipseParams(4);
 	//double F_ = ellipseParams(5);
+
+	//cout << A_ << ' ' << B_ << ' ' << C_ << ' ' << D_ << ' ' << E_ << ' ' << F_ << endl;
 
 	return extractEllipseParameters(ellipseParams);
 }

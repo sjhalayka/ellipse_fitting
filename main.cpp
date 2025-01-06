@@ -706,7 +706,7 @@ void idle_func(void)
 
 		global_ep = ep;
 
-		const double ecc = sqrt(1.0 - pow(ep.semiMinor/ep.semiMajor, 2.0));
+		const double ecc = sqrt(1.0 - pow(ep.semiMinor / ep.semiMajor, 2.0));
 		const double arg_perigee = ep.angle - pi / 2;
 
 		OrbitalParameters orbit(

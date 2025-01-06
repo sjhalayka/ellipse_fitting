@@ -1,4 +1,4 @@
-#include "main.h"
+﻿#include "main.h"
 
 
 #include <Eigen/Dense>
@@ -169,7 +169,7 @@ using namespace Eigen;
 //
 //
 //ellipseFoci calculateFoci(const ellipseParameters& params) {
-//	// c� = a� - b�
+//	// c² = a² - b²
 //	double c = sqrt(params.semiMajor * params.semiMajor -
 //		params.semiMinor * params.semiMinor);
 //
@@ -425,6 +425,10 @@ EllipseParameters fitEllipse(const std::vector<Point>& points, const Point& focu
 		b(i) = -1;             // Right-hand side is -1. This is important!
 	}
 
+	cout << A << endl;
+
+	cout << b << endl;
+
 	// Solve for the ellipse parameters
 	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
 
@@ -441,7 +445,236 @@ EllipseParameters fitEllipse(const std::vector<Point>& points, const Point& focu
 	return extractEllipseParameters(ellipseParams);
 }
 
+
+
+#include <cmath>
+#include <array>
+
+class OrbitalParameters {
+private:
+	double semiMajorAxis;    // a: semi-major axis in kilometers
+	double eccentricity;     // e: orbital eccentricity (dimensionless)
+	double inclination;      // i: orbital inclination in radians
+	double raan;            // Ω: right ascension of ascending node in radians
+	double argPerigee;      // ω: argument of perigee in radians
+	double meanAnomaly;     // M: mean anomaly in radians
+	double mu;              // μ: standard gravitational parameter (GM) in km³/s²
+
+public:
+	OrbitalParameters(double a, double e, double i, double omega, double w, double M, double gravitationalParam = 398600.4418)
+		: semiMajorAxis(a), eccentricity(e), inclination(i),
+		raan(omega), argPerigee(w), meanAnomaly(M), mu(gravitationalParam) {}
+
+	// Solve Kepler's equation using Newton-Raphson method
+	double solveKepler(double M, double e, double tolerance = 1e-8) const {
+		double E = M; // Initial guess
+		double delta;
+
+		do {
+			delta = (E - e * sin(E) - M) / (1 - e * cos(E));
+			E -= delta;
+		} while (std::abs(delta) > tolerance);
+
+		return E;
+	}
+
+	// Get position vector in orbital plane
+	std::array<double, 2> getPositionInOrbitalPlane(double trueAnomaly) const {
+		double r = semiMajorAxis * (1 - eccentricity * eccentricity) /
+			(1 + eccentricity * cos(trueAnomaly));
+
+		return { r * cos(trueAnomaly), r * sin(trueAnomaly) };
+	}
+
+	// Convert orbital position to cartesian coordinates (ECI frame)
+	std::array<double, 3> getCartesianPosition(double time) const {
+		// Solve Kepler's equation to get eccentric anomaly
+		double E = solveKepler(meanAnomaly +
+			sqrt(mu / (semiMajorAxis * semiMajorAxis * semiMajorAxis)) * time,
+			eccentricity);
+
+		// Calculate true anomaly
+		double trueAnomaly = 2 * atan(sqrt((1 + eccentricity) / (1 - eccentricity)) *
+			tan(E / 2));
+
+		// Get position in orbital plane
+		auto pos = getPositionInOrbitalPlane(trueAnomaly);
+
+		// Transform to ECI frame using rotation matrices
+		double x = pos[0] * (cos(raan) * cos(argPerigee) -
+			sin(raan) * sin(argPerigee) * cos(inclination)) -
+			pos[1] * (cos(raan) * sin(argPerigee) +
+				sin(raan) * cos(argPerigee) * cos(inclination));
+
+		double y = pos[0] * (sin(raan) * cos(argPerigee) +
+			cos(raan) * sin(argPerigee) * cos(inclination)) +
+			pos[1] * (cos(raan) * cos(argPerigee) * cos(inclination) -
+				sin(raan) * sin(argPerigee));
+
+		double z = pos[0] * sin(argPerigee) * sin(inclination) +
+			pos[1] * cos(argPerigee) * sin(inclination);
+
+		return { x, y, z };
+	}
+
+	// Get orbital period in seconds
+	double getPeriod() const {
+		return 2 * pi * sqrt(semiMajorAxis * semiMajorAxis * semiMajorAxis / mu);
+	}
+
+	// Get specific orbital energy
+	double getOrbitalEnergy() const {
+		return -mu / (2 * semiMajorAxis);
+	}
+
+	// Getters for orbital elements
+	double getSemiMajorAxis() const { return semiMajorAxis; }
+	double getEccentricity() const { return eccentricity; }
+	double getInclination() const { return inclination; }
+	double getRAAN() const { return raan; }
+	double getArgPerigee() const { return argPerigee; }
+	double getMeanAnomaly() const { return meanAnomaly; }
+};
+
+
+class OrbitalEllipse {
+private:
+	// Orbital parameters
+	double semiMajorAxis;
+	double eccentricity;
+	double inclination;
+	double raan;         // Right ascension of ascending node
+	double argPerigee;   // Argument of periapsis
+	int numPoints;       // Number of points to generate for the ellipse
+
+public:
+	OrbitalEllipse(double a, double e, double i, double omega, double w, int points = 20)
+		: semiMajorAxis(a), eccentricity(e), inclination(i),
+		raan(omega), argPerigee(w), numPoints(points) {}
+
+	// Calculate semi-minor axis
+	double getSemiMinorAxis() const {
+		return semiMajorAxis * sqrt(1.0 - eccentricity * eccentricity);
+	}
+
+	// Calculate focus distance from center
+	double getFocalDistance() const {
+		return semiMajorAxis * eccentricity;
+	}
+
+	// Generate points on the ellipse in the orbital plane
+	std::vector<std::array<double, 3>> generateEllipsePoints() const {
+		std::vector<std::array<double, 3>> points;
+		points.reserve(numPoints);
+
+		double semiMinor = getSemiMinorAxis();
+		double c = getFocalDistance();
+
+		for (int i = 0; i < numPoints; i++) {
+			double theta = 2.0 * pi * i / numPoints;
+			double r = semiMajorAxis * (1.0 - eccentricity * eccentricity) /
+				(1.0 + eccentricity * cos(theta));
+
+			// Calculate point in orbital plane (perifocal coordinates)
+			std::array<double, 3> point = {
+				r * cos(theta),
+				r * sin(theta),
+				0.0
+			};
+
+			// Transform to reference coordinates
+			points.push_back(transformToReferenceFrame(point));
+		}
+
+		return points;
+	}
+
+	// Transform a point from the orbital plane to the reference frame
+	std::array<double, 3> transformToReferenceFrame(const std::array<double, 3>& point) const {
+		// First rotation: argument of periapsis (w)
+		double x1 = point[0] * cos(argPerigee) - point[1] * sin(argPerigee);
+		double y1 = point[0] * sin(argPerigee) + point[1] * cos(argPerigee);
+		double z1 = point[2];
+
+		// Second rotation: inclination (i)
+		double x2 = x1;
+		double y2 = y1 * cos(inclination) - z1 * sin(inclination);
+		double z2 = y1 * sin(inclination) + z1 * cos(inclination);
+
+		// Third rotation: RAAN (Ω)
+		double x3 = x2 * cos(raan) - y2 * sin(raan);
+		double y3 = x2 * sin(raan) + y2 * cos(raan);
+		double z3 = z2;
+
+		return { x3, y3, z3 };
+	}
+
+	// Get points at specific true anomalies
+	std::array<double, 3> getPointAtTrueAnomaly(double trueAnomaly) const {
+		double r = semiMajorAxis * (1.0 - eccentricity * eccentricity) /
+			(1.0 + eccentricity * cos(trueAnomaly));
+
+		std::array<double, 3> point = {
+			r * cos(trueAnomaly),
+			r * sin(trueAnomaly),
+			0.0
+		};
+
+		return transformToReferenceFrame(point);
+	}
+
+	// Get periapsis point
+	std::array<double, 3> getPeriapsisPoint() const {
+		return getPointAtTrueAnomaly(0.0);
+	}
+
+	// Get apoapsis point
+	std::array<double, 3> getApoapsisPoint() const {
+		return getPointAtTrueAnomaly(pi);
+	}
+
+	// Get nodes (points where orbit crosses reference plane)
+	std::pair<std::array<double, 3>, std::array<double, 3>> getNodes() const {
+		// Ascending node (true anomaly = -w)
+		auto ascending = getPointAtTrueAnomaly(-argPerigee);
+		// Descending node (true anomaly = π-w)
+		auto descending = getPointAtTrueAnomaly(pi - argPerigee);
+		return { ascending, descending };
+	}
+
+	// Calculate orbital period (if provided with gravitational parameter)
+	double getPeriod(double mu) const {
+		return 2.0 * pi * sqrt(pow(semiMajorAxis, 3) / mu);
+	}
+
+	// Get ellipse parameters for visualization
+	struct EllipseParameters {
+		double a;        // semi-major axis
+		double b;        // semi-minor axis
+		double c;        // focal distance
+		double theta;    // rotation angle in xy-plane
+		double phi;      // rotation angle from z-axis
+	};
+
+	EllipseParameters getVisualizationParameters() const {
+		return {
+			semiMajorAxis,
+			getSemiMinorAxis(),
+			getFocalDistance(),
+			raan,
+			inclination
+		};
+	}
+};
+
+
+
+
+
+
 EllipseParameters global_ep;
+vector<array<double, 3Ui64>> double_check_ellipse_points;
+
 
 void idle_func(void)
 {
@@ -472,6 +705,42 @@ void idle_func(void)
 		EllipseParameters ep = fitEllipse(points, focus);
 
 		global_ep = ep;
+
+		const double ecc = sqrt(1.0 - pow(ep.semiMinor/ep.semiMajor, 2.0));
+
+		// Create an orbit (example values for a typical LEO satellite)
+		OrbitalParameters orbit(
+			ep.semiMajor,    // Semi-major axis (km)
+			ecc,     // Eccentricity
+			0.0,       // Inclination (radians)
+			0.0,	// RAAN (radians)
+			-pi/2.0 + ep.angle,       // Argument of perigee (radians)
+			0.0        // Initial mean anomaly (radians)
+		);
+
+
+
+		OrbitalEllipse oe(
+			orbit.getSemiMajorAxis(), 
+			orbit.getEccentricity(),
+			orbit.getInclination(),
+			orbit.getRAAN(),
+			orbit.getArgPerigee());
+
+		// Generate points for plotting
+		double_check_ellipse_points = oe.generateEllipsePoints();
+
+
+		// Get specific points of interest
+		//auto periapsis = oe.getPeriapsisPoint();
+		//auto apoapsis = oe.getApoapsisPoint();
+
+		//cout << periapsis[0] << " " << periapsis[1] << " " << periapsis[2]<< endl;
+		//cout << apoapsis[0] << " " << apoapsis[1] << " " << apoapsis[2] << endl;
+
+		//// Get visualization parameters
+		//auto params = oe.getVisualizationParameters();
+
 	}
 
 	frame_count++;
@@ -559,6 +828,9 @@ void draw_objects(void)
 	glEnd();
 
 
+
+
+
 	glColor3f(1.0, 0.5, 0.0);
 
 	glPushMatrix();
@@ -570,6 +842,18 @@ void draw_objects(void)
 	DrawEllipse(global_ep.centerX, global_ep.centerY, global_ep.semiMinor, global_ep.semiMajor, 100);
 
 	glPopMatrix();
+
+
+
+	glBegin(GL_POINTS);
+
+	glColor3f(1.0, 0.0, 0.0);
+
+	for (size_t i = 0; i < double_check_ellipse_points.size(); i++)
+		glVertex3d(double_check_ellipse_points[i][0], double_check_ellipse_points[i][1], double_check_ellipse_points[i][2]);
+
+	glEnd();
+
 
 
 	//glBegin(GL_TRIANGLES);

@@ -69,13 +69,13 @@ custom_math::vector_3 sun_pos(0, 0, 0);
 
 
 //custom_math::vector_3 mercury_pos(0, aphelion_distance, 0);
-//custom_math::vector_3 mercury_vel(-38.86e3*0.5, 0, 0);
+//custom_math::vector_3 mercury_vel(-38.86e3, 0, 0);
 
-custom_math::vector_3 mercury_pos(-aphelion_distance, 0, 0);
-custom_math::vector_3 mercury_vel(0, -38.86e3 * 0.5, 0);
+//custom_math::vector_3 mercury_pos(-aphelion_distance, 0, 0);
+//custom_math::vector_3 mercury_vel(0, -38.86e3 * 0.5, 0);
 
-//custom_math::vector_3 mercury_pos(-aphelion_distance, aphelion_distance, 0);
-//custom_math::vector_3 mercury_vel(0, -38.86e3*0.75, 0);
+custom_math::vector_3 mercury_pos(-aphelion_distance, aphelion_distance, 0);
+custom_math::vector_3 mercury_vel(0, -38.86e3*0.75, 0);
 
 
 

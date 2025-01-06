@@ -710,7 +710,7 @@ void idle_func(void)
 
 		// Create an orbit (example values for a typical LEO satellite)
 		OrbitalParameters orbit(
-			ep.semiMajor,    // Semi-major axis (km)
+			ep.semiMajor,    // Semi-major axis
 			ecc,     // Eccentricity
 			0.0,       // Inclination (radians)
 			0.0,	// RAAN (radians)

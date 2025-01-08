@@ -805,7 +805,6 @@ double hours_to_seconds(double hours)
 struct TrackingData {
 	double timestamp;  // Time in seconds
 	double azimuth;    // Azimuth in degrees
-	double elevation;  // Elevation in degrees
 };
 
 struct OrbitalData {
@@ -832,7 +831,7 @@ cartesian_point polarToCartesian(double radius, double azimuth)
 {
 	cartesian_point result;
 
-	double radians = azimuth;// *pi / 180.0;
+	double radians = azimuth;
 
 	// Convert polar to Cartesian
 	result.x = radius * std::cos(radians);
@@ -867,10 +866,10 @@ void calculateOrbitalParameters(const Vector3D& centralBody, const Vector3D& poi
 	// Orbital period (T) calculation using Kepler's Third Law (T^2 = (4π^2/GM) * a^3)
 	double T = std::sqrt((4.0 * pi * pi * std::pow(a, 3)) / (grav_constant * sun_mass));
 
-	std::cout << "Semi-major axis (a): " << a << " units" << std::endl;
-	std::cout << "Eccentricity (e): " << e << std::endl;
-	std::cout << "Focal parameter (c): " << c << " units" << std::endl;
-	std::cout << "Orbital period (T): " << T << " seconds" << std::endl;
+	std::cout << "Semi-major axis (a): " << a << endl;
+	std::cout << "Eccentricity (e): " << e << endl;
+	std::cout << "Focal parameter (c): " << c << endl;
+	std::cout << "Orbital period (T): " << T << endl;
 }
 
 
@@ -897,24 +896,23 @@ void idle_func(void)
 
 		std::vector<TrackingData> measurements = 
 		{
-			{hours_to_seconds(0),  deg_to_rad(0), 0},
-			{hours_to_seconds(24), deg_to_rad(1), 0},
-			{hours_to_seconds(52), deg_to_rad(8), 0}
+			{hours_to_seconds(0),  deg_to_rad(0)},
+			{hours_to_seconds(24), deg_to_rad(1)},
+			{hours_to_seconds(52), deg_to_rad(8)}
 		};
 
-
 		std::vector<OrbitalData> dataPoints(2);
-		vector<double> omegas;
 
 		for (size_t i = 0; i < measurements.size() - 1; i++)
 		{
+			//double omega = 4.31e-8; // Ceres average angular velocity
+			//double omega = 1.99e-7; // Earth average angular velocity
+
+			// Variable angular velocity
 			double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
 
-			omegas.push_back(omega);
+			cout << "Angular velocity (omega): " << omega << endl;
 
-			cout << "Angular velocity: " << omega << endl;
-
-			//double omega = 4.31e-8;// 1.99e-7;
 			double T = 2 * pi / omega; // Orbital period in seconds
 			double r = std::cbrt((sun_mass * grav_constant * T * T) / (4 * pi * pi));
 			double v = omega * r;

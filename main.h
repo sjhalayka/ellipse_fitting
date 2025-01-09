@@ -3,7 +3,7 @@
 
 #include "uv_camera.h"
 #include "custom_math.h"
-
+using custom_math::vector_3;
 
 
 
@@ -61,6 +61,7 @@ void draw_objects(void);
 const double speed_of_light = 299792458;
 const double grav_constant = 6.673e-11;
 const double sun_mass = 1.989e30;
+const double earth_mass = 5.972e24;
 const double pi = 4.0 * atan(1.0);
 
 double aphelion_distance = 69817079000.0;

@@ -221,7 +221,7 @@ EllipseParams2 extractEllipseParams(
 	double D = coefficients[3], E = coefficients[4], F = coefficients[5];
 
 	// Calculate orientation angle (theta)
-	double theta = pi/2 +  0.5 * atan2(B, A - C);
+	double theta = pi / 2 + 0.5 * atan2(B, A - C);
 
 	// Transform coefficients to canonical form
 	double cosTheta = cos(theta), sinTheta = sin(theta);
@@ -238,7 +238,7 @@ EllipseParams2 extractEllipseParams(
 	double centerX = (2 * C * D - B * E) / (B * B - 4 * A * C);
 	double centerY = (2 * A * E - B * D) / (B * B - 4 * A * C);
 
-	global_ep.angle = theta + pi/2;
+	global_ep.angle = theta + pi / 2;
 	global_ep.centerX = centerX;
 	global_ep.centerY = centerY;
 	global_ep.semiMajor = a;
@@ -381,6 +381,11 @@ double hours_to_seconds(double hours)
 	return hours * 3600.0;
 }
 
+double hours_to_radians(double hours)
+{
+	return hours * pi / 12.0;
+}
+
 struct timestamp_azimuth_data
 {
 	double timestamp; // seconds 
@@ -459,10 +464,19 @@ void idle_func(void)
 			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},
 			//{hours_to_seconds(52), deg_to_rad(-8) + pi / 2}
 
-			{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
-			{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
-			{hours_to_seconds(48), deg_to_rad(357.99) + pi / 2}
+			{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
+			{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},
+			{hours_to_seconds(48), deg_to_rad(-2.01) + pi / 2}
+
+			//{hours_to_seconds(0),   hours_to_radians(4.79) + pi / 2},
+			//{hours_to_seconds(96),  hours_to_radians(4.78) + pi / 2},
+			//{hours_to_seconds(192), hours_to_radians(4.77) + pi / 2}
+	
 		};
+
+
+
+
 
 		// Produce 2 radii and velocities
 		vector<radius_velocity_data> data_points(2);
@@ -520,7 +534,7 @@ void idle_func(void)
 
 
 
-		cartesian_point curr_pos = cart2;
+		cartesian_point curr_pos = cart1;
 		cartesian_point curr_vel = vel1;
 
 		cout << curr_vel.length() << endl;
@@ -543,7 +557,7 @@ void idle_func(void)
 			accel.x = -grav_dir.x / distance * (grav_constant * sun_mass / pow(distance, 2.0));
 			accel.y = -grav_dir.y / distance * (grav_constant * sun_mass / pow(distance, 2.0));
 
-			curr_vel.x += accel.x *	dt;
+			curr_vel.x += accel.x * dt;
 			curr_vel.y += accel.y * dt;
 
 			curr_pos.x += curr_vel.x * dt;
@@ -551,14 +565,21 @@ void idle_func(void)
 
 			orbit_points[i] = curr_pos;
 			orbit_velocities[i] = curr_vel;
-
-			cout << curr_vel.length() << endl;
 		}
-			
+
 		//for (size_t i = 0; i < ellipse_positions.size(); i++)
 		//    points.push_back(Point(ellipse_positions[i].x, ellipse_positions[i].y));
 
 		//EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
+
+
+
+
+
+
+
+
+
 
 
 		Eigen::MatrixXd A;
@@ -676,7 +697,7 @@ void draw_objects(void)
 		glVertex3d(carts[0].x, carts[0].y, 0);
 
 		glColor3f(0.0, 1.0, 0.0);
-		glVertex3d(carts[1].x, carts[1].y, 0);	
+		glVertex3d(carts[1].x, carts[1].y, 0);
 	}
 
 	//glColor3f(1.0, 0.0, 1.0);
@@ -954,6 +975,5 @@ void passive_motion_func(int x, int y)
 	mouse_x = x;
 	mouse_y = y;
 }
-
 
 

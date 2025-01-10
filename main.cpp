@@ -43,69 +43,8 @@ public:
 };
 
 
-
-
-struct EllipseParameters2 {
-	double centerX;
-	double centerY;
-	double semiMajorAxis;
-	double semiMinorAxis;
-	double eccentricity;
-};
-
-EllipseParameters2 calculateEllipse(const std::vector<cartesian_point> points,
-	const cartesian_point focus) {
-	if (points.size() != 5) {
-		throw std::invalid_argument("Exactly 5 points required");
-	}
-
-	// Build the system of equations Ax = b
-	Eigen::MatrixXd A(5, 4);
-	Eigen::VectorXd b(5);
-
-	// For each point (x,y), we have the equation:
-	// sqrt((x-h)^2 + (y-k)^2) + sqrt((x-f1x)^2 + (y-f1y)^2) = 2a
-	// where (h,k) is center, (f1x,f1y) is focus, and a is semi-major axis
-
-	for (int i = 0; i < 5; i++) {
-		double x = points[i].x;
-		double y = points[i].y;
-		double fx = focus.x;
-		double fy = focus.y;
-
-		// Initial guess for the center and semi-major axis
-		double h = (x + fx) / 2;
-		double k = (y + fy) / 2;
-		double a = sqrt(pow(x - h, 2) + pow(y - k, 2));
-
-		A(i, 0) = (x - h) / sqrt(pow(x - h, 2) + pow(y - k, 2)) -
-			(x - fx) / sqrt(pow(x - fx, 2) + pow(y - fy, 2));
-		A(i, 1) = (y - k) / sqrt(pow(x - h, 2) + pow(y - k, 2)) -
-			(y - fy) / sqrt(pow(x - fx, 2) + pow(y - fy, 2));
-		A(i, 2) = -2;
-		A(i, 3) = 1;
-
-		b(i) = -(sqrt(pow(x - h, 2) + pow(y - k, 2)) +
-			sqrt(pow(x - fx, 2) + pow(y - fy, 2)) - 2 * a);
-	}
-
-	// Solve using least squares
-	Eigen::VectorXd solution = A.colPivHouseholderQr().solve(b);
-
-	EllipseParameters2 params;
-	params.centerX = solution(0);
-	params.centerY = solution(1);
-	params.semiMajorAxis = solution(2);
-
-	// Calculate eccentricity
-	double c = sqrt(pow(focus.x - params.centerX, 2) +
-		pow(focus.y - params.centerY, 2));
-
-	params.eccentricity = c / params.semiMajorAxis;
-	params.semiMinorAxis = params.semiMajorAxis * sqrt(1.0 - params.eccentricity* params.eccentricity);
-
-	return params;
-}
+EllipseParameters global_ep;
+vector<array<double, 3Ui64>> double_check_ellipse_points;
 
 
 
@@ -116,11 +55,11 @@ EllipseParameters2 calculateEllipse(const std::vector<cartesian_point> points,
 EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 {
 	double a = coefficients(0);
-	double b = coefficients(1) / 2;
+	double b = coefficients(1);
 	double c = coefficients(2);
 	double d = coefficients(3);
 	double e = coefficients(4);
-	double f = 1;
+	double f = 1;// coefficients(5);
 
 	// Calculate center
 	double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
@@ -160,6 +99,10 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 }
 
 
+
+
+
+
 EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const cartesian_point& focus)
 {
 	if (points.size() != 5) {
@@ -179,7 +122,7 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const c
 		A(i, 1) = x * y;       // Coefficient for xy
 		A(i, 2) = y * y;       // Coefficient for y^2
 		A(i, 3) = x;           // Coefficient for x
-		A(i, 4) = y;           // Coefficient for y
+		A(i, 4) = y;           //  Coefficient for y
 		A(i, 5) = 1;           // Constant term
 		b(i) = -1;             // Right-hand side is -1. This is important!
 	}
@@ -188,18 +131,127 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const c
 	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
 
 	// Extract parameters
-	//double A_ = ellipseParams(0);
-	//double B_ = ellipseParams(1);
-	//double C_ = ellipseParams(2);
-	//double D_ = ellipseParams(3);
-	//double E_ = ellipseParams(4);
-	//double F_ = ellipseParams(5);
+	double A_ = ellipseParams(0);
+	double B_ = ellipseParams(1);
+	double C_ = ellipseParams(2);
+	double D_ = ellipseParams(3);
+	double E_ = ellipseParams(4);
+	double F_ = ellipseParams(5);
 
-	return extractEllipseParameters(ellipseParams);
+
+
+
+	// Compute center of ellipse
+	EllipseParameters ep = extractEllipseParameters(ellipseParams);
+
+
+	global_ep.angle = ep.angle;
+	global_ep.centerX = ep.centerX;
+	global_ep.centerY = ep.centerY;
+	global_ep.semiMajor = ep.semiMajor;
+	global_ep.semiMinor = ep.semiMinor;
+
+	//cout << global_ep.angle << endl;
+	//cout << global_ep.centerX << endl;
+	//cout << global_ep.centerY << endl;
+	//cout << global_ep.semiMajor << endl;
+	//cout << global_ep.semiMinor << endl;
+
+
+	return ep;
+}
+// https://chatgpt.com/c/67809363-9d0c-8003-b1cc-ad9a37e10e54
+
+
+struct EllipseParams2 {
+	double semiMajorAxis;
+	double eccentricity;
+	double angle; // in radians
+};
+
+void gatherConstraints(
+	const std::vector<cartesian_point>& points,
+	const std::vector<cartesian_point>& velocities,
+	Eigen::MatrixXd& A,
+	Eigen::VectorXd& b)
+{
+	size_t n = points.size();
+	A = Eigen::MatrixXd(2 * n, 6);
+	b = Eigen::VectorXd::Ones(2 * n);
+	b = -b; // Make them all -1s
+
+	cout << b << endl;
+
+	for (int i = 0; i < n; ++i) {
+		double x = points[i].x, y = points[i].y;
+		double vx = velocities[i].x, vy = velocities[i].y;
+
+		// Ellipse equation constraint
+		A(i, 0) = x * x;      // A
+		A(i, 1) = x * y;      // B
+		A(i, 2) = y * y;      // C
+		A(i, 3) = x;          // D
+		A(i, 4) = y;          // E
+		A(i, 5) = 1;          // F
+
+		// Tangent velocity constraint
+		A(n + i, 0) = 2 * x * vx; // 2A x vx
+		A(n + i, 1) = x * vy + y * vx; // B (x vy + y vx)
+		A(n + i, 2) = 2 * y * vy; // 2C y vy
+		A(n + i, 3) = vx;         // D vx
+		A(n + i, 4) = vy;         // E vy
+		A(n + i, 5) = 0;          // F
+	}
 }
 
 
+std::vector<double> solveEllipseCoefficients(
+	const Eigen::MatrixXd& A,
+	const Eigen::VectorXd& b)
+{
+	Eigen::VectorXd coefficients = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+	return std::vector<double>(coefficients.data(), coefficients.data() + coefficients.size());
+}
 
+EllipseParams2 extractEllipseParams(
+	const std::vector<double>& coefficients,
+	const cartesian_point& focus)
+{
+	double A = coefficients[0], B = coefficients[1], C = coefficients[2];
+	double D = coefficients[3], E = coefficients[4], F = coefficients[5];
+
+	// Calculate orientation angle (theta)
+	double theta = pi/2 +  0.5 * atan2(B, A - C);
+
+	// Transform coefficients to canonical form
+	double cosTheta = cos(theta), sinTheta = sin(theta);
+	double Ap = A * cosTheta * cosTheta + B * cosTheta * sinTheta + C * sinTheta * sinTheta;
+	double Cp = A * sinTheta * sinTheta - B * cosTheta * sinTheta + C * cosTheta * cosTheta;
+
+	// Calculate semi-major and semi-minor axes
+	double a = sqrt(1 / fabs(Ap));
+	double b = sqrt(1 / fabs(Cp));
+
+	// Calculate eccentricity
+	double e = sqrt(1 - (b * b) / (a * a));
+
+	double centerX = (2 * C * D - B * E) / (B * B - 4 * A * C);
+	double centerY = (2 * A * E - B * D) / (B * B - 4 * A * C);
+
+	global_ep.angle = theta + pi/2;
+	global_ep.centerX = centerX;
+	global_ep.centerY = centerY;
+	global_ep.semiMajor = a;
+	global_ep.semiMinor = b;// ep.semiMinor;
+
+	cout << global_ep.angle << endl;
+	cout << global_ep.centerX << endl;
+	cout << global_ep.centerY << endl;
+	cout << global_ep.semiMajor << endl;
+	cout << global_ep.semiMinor << endl;
+
+	return { a, e, theta };
+}
 
 
 void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
@@ -233,20 +285,6 @@ int main(int argc, char** argv)
 {
 	cout << setprecision(20) << endl;
 
-
-	//cout << sqrt((grav_constant * 1.988435e30 / 69817079000.0) * (1 - 0.20563069) / (1 + 0.20563069)) << endl;
-
-
-
-
-
-
-
-//	return 0;
-
-
-
-
 	glutInit(&argc, argv);
 	init_opengl(win_x, win_y);
 	glutReshapeFunc(reshape_func);
@@ -275,8 +313,6 @@ custom_math::vector_3 grav_acceleration(const custom_math::vector_3& pos, const 
 	return accel;
 }
 
-
-
 void proceed_Euler(custom_math::vector_3& pos, custom_math::vector_3& vel, const double G, const double dt)
 {
 	custom_math::vector_3 accel = grav_acceleration(pos, vel, G);
@@ -301,7 +337,6 @@ void proceed_RK4(custom_math::vector_3& pos, custom_math::vector_3& vel, const d
 	vel += (k1_acceleration + (k2_acceleration + k3_acceleration) * 2.0 + k4_acceleration) * one_sixth * dt;
 	pos += (k1_velocity + (k2_velocity + k3_velocity) * 2.0 + k4_velocity) * one_sixth * dt;
 }
-
 
 void proceed_symplectic4(custom_math::vector_3& pos, custom_math::vector_3& vel, const double G, const double dt)
 {
@@ -336,460 +371,15 @@ void proceed_symplectic4(custom_math::vector_3& pos, custom_math::vector_3& vel,
 	//	vel += grav_acceleration(pos, vel, G) * d[3] * dt; // last element d[3] is always 0
 }
 
-
-#include <iostream>
-#include <vector>
-#include <cmath>
-#include <Eigen/Dense>
-
-// Assuming you have a library like Eigen for matrix operations or implement your own.
-//
-//struct Observation {
-//	double time;  // Time of observation
-//	double azimuth; // In radians
-//	double elevation; // In radians
-//};
-//
-//struct Orbit {
-//	double a; // Semi-major axis
-//	// Other orbital parameters if needed (e, i, etc.)
-//};
-//
-//class OrbitEstimator {
-//private:
-//	std::vector<Observation> observations;
-//
-//	// Convert azimuth and elevation to Cartesian coordinates
-//	Eigen::Vector3d azElToCartesian(double az, double el, double r = 1.0) {
-//		return Eigen::Vector3d(
-//			r * cos(az) * cos(el),
-//			r * sin(az) * cos(el),
-//			r * sin(el)
-//		);
-//	}
-//
-//	// Fit an ellipse to a set of points (simplified)
-//	Orbit fitEllipse(const std::vector<Eigen::Vector3d>& points) {
-//		// This is a placeholder; actual implementation would use something like:
-//		// - Least Squares Ellipse Fitting (LSEF)
-//		// - Direct least square fitting of ellipses
-//		// Here we assume we can directly compute 'a' from points.
-//		double a = 0; // Simplified calculation, real method would involve more complex math
-//		return Orbit{ a };
-//	}
-//
-//public:
-//	void addObservation(const Observation& obs) {
-//		observations.push_back(obs);
-//	}
-//
-//	Orbit estimateOrbit() {
-//		std::vector<Eigen::Vector3d> points;
-//		for (const auto& obs : observations) {
-//			points.push_back(azElToCartesian(obs.azimuth, obs.elevation));
-//		}
-//
-//		// Here we assume we can fit an ellipse in 3D space, which is complex. 
-//		// For simplicity, we might project onto the plane of the orbit if known.
-//		Orbit result = fitEllipse(points);
-//		return result;
-//	}
-//};
-
-
-//
-//struct Point {
-//	double x, y;
-//};
-//
-//class EllipseParameters
-//{
-//public:
-//	double centerX = 0;
-//	double centerY = 0;
-//	double semiMajor = 0;
-//	double semiMinor = 0;
-//	double angle = 0;
-//};
-//
-//
-//EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
-//{
-//	double a = coefficients(0);
-//	double b = coefficients(1) / 2;
-//	double c = coefficients(2);
-//	double d = coefficients(3);
-//	double e = coefficients(4);
-//	double f = 1;
-//
-//	// Calculate center
-//	double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
-//	double centerY = (2 * a * e - b * d) / (b * b - 4 * a * c);
-//
-//	// Calculate rotation angle
-//	double theta = 0.5 * atan2(b, (a - c));
-//
-//	// Calculate semi-axes
-//	double ct = cos(theta);
-//	double st = sin(theta);
-//	double ct2 = ct * ct;
-//	double st2 = st * st;
-//	double a2 = a * ct2 + b * ct * st + c * st2;
-//	double c2 = a * st2 - b * ct * st + c * ct2;
-//
-//	// Calculate constants
-//	double term = 2 * (a * centerX * centerX + b * centerX * centerY +
-//		c * centerY * centerY + d * centerX + e * centerY + f);
-//
-//	double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
-//	double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
-//
-//	if (a2 > c2) {
-//		std::swap(semiMajor, semiMinor);
-//		theta += pi / 2;
-//	}
-//
-//	EllipseParameters params;
-//	params.centerX = centerX;
-//	params.centerY = centerY;
-//	params.semiMajor = semiMajor;
-//	params.semiMinor = semiMinor;
-//	params.angle = theta;
-//
-//	return params;
-//}
-
-
-
-
-
-
-
-
-//
-//EllipseParameters fitEllipse(const std::vector<cartesian_point>& points)
-//{
-//	const size_t num_points = 5;
-//
-//	if (points.size() != num_points) {
-//		std::cerr << "Error: Exactly " << num_points << " points are required.\n";
-//		return EllipseParameters();
-//	}
-//
-//	Eigen::MatrixXd A(num_points, 6);
-//	Eigen::VectorXd b(num_points);
-//
-//	// Fill the matrix A and vector b with the equations from the points
-//	for (size_t i = 0; i < num_points; ++i)
-//	{
-//		double x = points[i].x;
-//		double y = points[i].y;
-//		A(i, 0) = x * x;       // Coefficient for x^2
-//		A(i, 1) = x * y;       // Coefficient for xy
-//		A(i, 2) = y * y;       // Coefficient for y^2
-//		A(i, 3) = x;           // Coefficient for x
-//		A(i, 4) = y;           // Coefficient for y
-//		A(i, 5) = 1;           // Constant term
-//		b(i) = -1;             // Right-hand side is -1. This is important!
-//	}
-//
-//	//cout << A << endl;
-//
-//	//cout << b << endl;
-//
-//	// Solve for the ellipse parameters
-//	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-//
-//	//// Extract parameters
-//	//double A_ = ellipseParams(0);
-//	//double B_ = ellipseParams(1);
-//	//double C_ = ellipseParams(2);
-//	//double D_ = ellipseParams(3);
-//	//double E_ = ellipseParams(4);
-//	//double F_ = ellipseParams(5);
-//
-//	//cout << A_ << ' ' << B_ << ' ' << C_ << ' ' << D_ << ' ' << E_ << ' ' << F_ << endl;
-//
-//	return extractEllipseParameters(ellipseParams);
-//}
-
-
-
-#include <cmath>
-#include <array>
-//
-//class OrbitalParameters {
-//private:
-//	double semiMajorAxis;    // a: semi-major axis in kilometers
-//	double eccentricity;     // e: orbital eccentricity (dimensionless)
-//	double inclination;      // i: orbital inclination in radians
-//	double raan;            // Ω: right ascension of ascending node in radians
-//	double argPerigee;      // ω: argument of perigee in radians
-//	double meanAnomaly;     // M: mean anomaly in radians
-//	double mu;              // μ: standard gravitational parameter (GM) in km³/s²
-//
-//public:
-//	OrbitalParameters(double a, double e, double i, double omega, double w, double M, double gravitationalParam = 398600.4418)
-//		: semiMajorAxis(a), eccentricity(e), inclination(i),
-//		raan(omega), argPerigee(w), meanAnomaly(M), mu(gravitationalParam) {}
-//
-//	// Solve Kepler's equation using Newton-Raphson method
-//	double solveKepler(double M, double e, double tolerance = 1e-8) const {
-//		double E = M; // Initial guess
-//		double delta;
-//
-//		do {
-//			delta = (E - e * sin(E) - M) / (1 - e * cos(E));
-//			E -= delta;
-//		} while (std::abs(delta) > tolerance);
-//
-//		return E;
-//	}
-//
-//	// Get position vector in orbital plane
-//	std::array<double, 2> getPositionInOrbitalPlane(double trueAnomaly) const {
-//		double r = semiMajorAxis * (1 - eccentricity * eccentricity) /
-//			(1 + eccentricity * cos(trueAnomaly));
-//
-//		return { r * cos(trueAnomaly), r * sin(trueAnomaly) };
-//	}
-//
-//	// Convert orbital position to cartesian coordinates (ECI frame)
-//	std::array<double, 3> getCartesianPosition(double time) const {
-//		// Solve Kepler's equation to get eccentric anomaly
-//		double E = solveKepler(meanAnomaly +
-//			sqrt(mu / (semiMajorAxis * semiMajorAxis * semiMajorAxis)) * time,
-//			eccentricity);
-//
-//		// Calculate true anomaly
-//		double trueAnomaly = 2 * atan(sqrt((1 + eccentricity) / (1 - eccentricity)) *
-//			tan(E / 2));
-//
-//		// Get position in orbital plane
-//		auto pos = getPositionInOrbitalPlane(trueAnomaly);
-//
-//		// Transform to ECI frame using rotation matrices
-//		double x = pos[0] * (cos(raan) * cos(argPerigee) -
-//			sin(raan) * sin(argPerigee) * cos(inclination)) -
-//			pos[1] * (cos(raan) * sin(argPerigee) +
-//				sin(raan) * cos(argPerigee) * cos(inclination));
-//
-//		double y = pos[0] * (sin(raan) * cos(argPerigee) +
-//			cos(raan) * sin(argPerigee) * cos(inclination)) +
-//			pos[1] * (cos(raan) * cos(argPerigee) * cos(inclination) -
-//				sin(raan) * sin(argPerigee));
-//
-//		double z = pos[0] * sin(argPerigee) * sin(inclination) +
-//			pos[1] * cos(argPerigee) * sin(inclination);
-//
-//		return { x, y, z };
-//	}
-//
-//	// Get orbital period in seconds
-//	double getPeriod() const {
-//		return 2 * pi * sqrt(semiMajorAxis * semiMajorAxis * semiMajorAxis / mu);
-//	}
-//
-//	// Get specific orbital energy
-//	double getOrbitalEnergy() const {
-//		return -mu / (2 * semiMajorAxis);
-//	}
-//
-//	// Getters for orbital elements
-//	double getSemiMajorAxis() const { return semiMajorAxis; }
-//	double getEccentricity() const { return eccentricity; }
-//	double getInclination() const { return inclination; }
-//	double getRAAN() const { return raan; }
-//	double getArgPerigee() const { return argPerigee; }
-//	double getMeanAnomaly() const { return meanAnomaly; }
-//};
-
-
-class OrbitalEllipse {
-private:
-	// Orbital parameters
-	double semiMajorAxis;
-	double eccentricity;
-	double inclination;
-	double raan;         // Right ascension of ascending node
-	double argPerigee;   // Argument of periapsis
-	int numPoints;       // Number of points to generate for the ellipse
-
-public:
-	OrbitalEllipse(double a, double e, double i, double omega, double w, int points = 20)
-		: semiMajorAxis(a), eccentricity(e), inclination(i),
-		raan(omega), argPerigee(w), numPoints(points) {}
-
-	// Calculate semi-minor axis
-	double getSemiMinorAxis() const {
-		return semiMajorAxis * sqrt(1.0 - eccentricity * eccentricity);
-	}
-
-	// Calculate focus distance from center
-	double getFocalDistance() const {
-		return semiMajorAxis * eccentricity;
-	}
-
-	// Generate points on the ellipse in the orbital plane
-	std::vector<std::array<double, 3>> generateEllipsePoints() const {
-		std::vector<std::array<double, 3>> points;
-		points.reserve(numPoints);
-
-		double semiMinor = getSemiMinorAxis();
-		double c = getFocalDistance();
-
-		for (int i = 0; i < numPoints; i++) {
-			double theta = 2.0 * pi * i / numPoints;
-			double r = semiMajorAxis * (1.0 - eccentricity * eccentricity) /
-				(1.0 + eccentricity * cos(theta));
-
-			// Calculate point in orbital plane (perifocal coordinates)
-			std::array<double, 3> point = {
-				r * cos(theta),
-				r * sin(theta),
-				0.0
-			};
-
-			// Transform to reference coordinates
-			points.push_back(transformToReferenceFrame(point));
-		}
-
-		return points;
-	}
-
-	// Transform a point from the orbital plane to the reference frame
-	std::array<double, 3> transformToReferenceFrame(const std::array<double, 3>& point) const {
-		// First rotation: argument of periapsis (w)
-		double x1 = point[0] * cos(argPerigee) - point[1] * sin(argPerigee);
-		double y1 = point[0] * sin(argPerigee) + point[1] * cos(argPerigee);
-		double z1 = point[2];
-
-		// Second rotation: inclination (i)
-		double x2 = x1;
-		double y2 = y1 * cos(inclination) - z1 * sin(inclination);
-		double z2 = y1 * sin(inclination) + z1 * cos(inclination);
-
-		// Third rotation: RAAN (Ω)
-		double x3 = x2 * cos(raan) - y2 * sin(raan);
-		double y3 = x2 * sin(raan) + y2 * cos(raan);
-		double z3 = z2;
-
-		return { x3, y3, z3 };
-	}
-
-	// Get points at specific true anomalies
-	std::array<double, 3> getPointAtTrueAnomaly(double trueAnomaly) const {
-		double r = semiMajorAxis * (1.0 - eccentricity * eccentricity) /
-			(1.0 + eccentricity * cos(trueAnomaly));
-
-		std::array<double, 3> point = {
-			r * cos(trueAnomaly),
-			r * sin(trueAnomaly),
-			0.0
-		};
-
-		return transformToReferenceFrame(point);
-	}
-
-	// Get periapsis point
-	std::array<double, 3> getPeriapsisPoint() const {
-		return getPointAtTrueAnomaly(0.0);
-	}
-
-	// Get apoapsis point
-	std::array<double, 3> getApoapsisPoint() const {
-		return getPointAtTrueAnomaly(pi);
-	}
-
-	// Get nodes (points where orbit crosses reference plane)
-	std::pair<std::array<double, 3>, std::array<double, 3>> getNodes() const {
-		// Ascending node (true anomaly = -w)
-		auto ascending = getPointAtTrueAnomaly(-argPerigee);
-		// Descending node (true anomaly = π-w)
-		auto descending = getPointAtTrueAnomaly(pi - argPerigee);
-		return { ascending, descending };
-	}
-
-	// Calculate orbital period (if provided with gravitational parameter)
-	double getPeriod(double mu) const {
-		return 2.0 * pi * sqrt(pow(semiMajorAxis, 3) / mu);
-	}
-
-	// Get ellipse parameters for visualization
-	struct EllipseParameters {
-		double a;        // semi-major axis
-		double b;        // semi-minor axis
-		double c;        // focal distance
-		double theta;    // rotation angle in xy-plane
-		double phi;      // rotation angle from z-axis
-	};
-
-	EllipseParameters getVisualizationParameters() const {
-		return {
-			semiMajorAxis,
-			getSemiMinorAxis(),
-			getFocalDistance(),
-			raan,
-			inclination
-		};
-	}
-};
-
-
-
-
-
-
-
-
-
-
-EllipseParameters global_ep;
-vector<array<double, 3Ui64>> double_check_ellipse_points;
-
-
 double deg_to_rad(double degree)
 {
-	return degree * (pi/180.0);
+	return degree * (pi / 180.0);
 }
 
 double hours_to_seconds(double hours)
 {
 	return hours * 3600.0;
 }
-
-
-
-
-
-
-struct TrackingData {
-	double timestamp;  // Time in seconds
-	double azimuth;    // Azimuth in degrees
-};
-
-struct OrbitalData {
-	double radius;
-	double velocity;
-};
-
-
-
-
-#include <cmath>
-#include <iostream>
-#include <vector>
-using namespace std;
-
-
-
-
-
-
-
-
-
-
 
 struct timestamp_azimuth_data
 {
@@ -803,9 +393,6 @@ struct radius_velocity_data
 	double radius;
 	double velocity;
 };
-
-
-
 
 cartesian_point to_cartesian(double radius, double azimuth)
 {
@@ -829,210 +416,52 @@ cartesian_point to_spherical(double x, double y)
 
 
 
-struct ellipse_params
-{
-	double semimajoraxis;
-	double eccentricity;
-	double semiminoraxis;
-	double focus;
-};
-
-ellipse_params calc_orbit_params(const cartesian_point& sun_pos, const cartesian_point& point1, const cartesian_point& point2, double mass, double newtons_constant)
-{
-	const double r1 = (point1 - sun_pos).length();
-	const double r2 = (point2 - sun_pos).length();
-
-	// Semi-major axis
-	const double a = (r1 + r2) / 2.0;
-
-	// Eccentricity
-	const double e = abs(r1 - r2) / (r1 + r2);
-
-	// Semi-minor axis
-	const double b = a * sqrt(1.0 - e * e);
-
-	// Focal parameter (distance from center to focus)
-	const double c = e * a;
-
-	// Orbital period (T) calculation using Kepler's Third Law (T^2 = (4π^2/GM) * a^3)
-	const double T = sqrt((4.0 * pi * pi * pow(a, 3)) / (newtons_constant * mass));
-
-	//cout << "Semi-major axis (a): " << a << endl;
-	//cout << "Eccentricity (e): " << e << endl;
-	//cout << "Focal parameter (c): " << c << endl;
-	//cout << "Orbital period (T): " << T << endl;
-
-	ellipse_params ep;
-	ep.semimajoraxis = a;
-	ep.eccentricity = e;
-	ep.semiminoraxis = b;
-	ep.focus = c;
-
-	return ep;
-}
-
-
-
-// Function to compute ellipse parameters
-void computeEllipseParameters(vector<cartesian_point> points, cartesian_point focus) {
-	// Prepare the system of equations
-	MatrixXd A(5, 6);
-	VectorXd B(5);
-
-	for (int i = 0; i < 5; ++i) 
-	{
-		A(i, 0) = points[i].x * points[i].x;
-		A(i, 1) = points[i].x * points[i].y;
-		A(i, 2) = points[i].y * points[i].y;
-		A(i, 3) = points[i].x;
-		A(i, 4) = points[i].y;
-		A(i, 5) = 1.0;
-		B(i) = -1;
-	}
-
-	// Solve for the conic coefficients
-	VectorXd conicParams = A.jacobiSvd(ComputeThinU | ComputeThinV).solve(B);
-
-	// Extracting parameters A, B, C, D, E, F from conicParams
-	double A_ = conicParams(0);
-	double B_ = conicParams(1);
-	double C_ = conicParams(2);
-	double D_ = conicParams(3);
-	double E_ = conicParams(4);
-	double F_ = conicParams(5);
-
-	// Compute ellipse center
-	double h = (B_ * E_ - 2.0 * C_ * D_) / (4.0 * A_ * C_ - B_ * B_);
-	double k = (B_ * D_ - 2.0 * A_ * E_) / (4.0 * A_ * C_ - B_ * B_);
-
-	// C_ompute semi-major and semi-minor axis lengths
-	double term1 = 2 * (A_ * E_ * E_ + C_ * D_ * D_ - B_ * D_ * E_ + (B_ * B_ - 4 * A_ * C_) * F_);
-	double term2 = sqrt((A_ - C_) * (A_ - C_) + B_ * B_);
-	double a = sqrt(-term1 / (A_ + C_ + term2));
-	double b = sqrt(-term1 / (A_ + C_ - term2));
-
-	// D_etermine if the ellipse is rotated
-	double rotation = 0.5 * atan2(B_, A_ - C_);
-
-	// Here, we assume the given focus is one of the two foci; 
-	// calculate the distance from the center to this focus
-	double distanceToFocus = sqrt((focus.x - h) * (focus.x - h) + (focus.y - k) * (focus.y - k));
-
-	// The distance should match one of the foci distances
-	double c = sqrt(a * a - b * b);
-	if (abs(distanceToFocus - c) > 1e-6) {
-		cout << "The given point does not seem to be a focus of the ellipse derived from these points." << endl;
-		return; // Or handle this case appropriately
-	}
-
-	global_ep.angle = rotation;
-	global_ep.centerX = h;
-	global_ep.centerY = k;
-	global_ep.semiMajor = a;
-	global_ep.semiMinor = b;
-
-	// Output the parameters
-	cout << "Ellipse parameters:" << endl;
-	cout << "Center (h, k): (" << h << ", " << k << ")" << endl;
-	cout << "Semi-major axis (a): " << a << endl;
-	cout << "Semi-minor axis (b): " << b << endl;
-	cout << "Rotation angle (theta): " << rotation << " radians" << endl;
-}
-
-
-
-
-
-
-
-
-
-double distance(cartesian_point p1, cartesian_point p2) {
-	return std::sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
-}
-
-// Simplified method - actual implementation would need more complex fitting
-cartesian_point findEllipseCenter(cartesian_point focus, std::vector<cartesian_point>& points)
-{
-
-
-	cartesian_point center = { 0, 0 };  // Initial guess
-	double totalDist = 0, nPoints = points.size();
-	for (const auto& p : points) {
-		totalDist += distance(focus, p);
-		center.x += p.x;
-		center.y += p.y;
-	}
-	center.x /= nPoints;
-	center.y /= nPoints;
-
-	// Here you would adjust center based on the constant sum property of ellipse
-	// This is a very rough estimation
-	double constantSum = totalDist / nPoints;
-	double c = distance(center, focus); // Distance from center to focus
-	double a = constantSum / 2; // Semi-major axis length
-	double b = std::sqrt(a * a - c * c); // Semi-minor axis length
-
-
-	global_ep.angle = 0;
-	global_ep.centerX = 0;
-	global_ep.centerY = -c;
-	global_ep.semiMajor = a;
-	global_ep.semiMinor = b;
-
-
-	return center;
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
 vector<cartesian_point> carts;
 vector<cartesian_point> orbit_points(5);
 
+vector<cartesian_point> orbit_velocities(5);
 
 
-		
+
 void idle_func(void)
 {
 	static size_t frame_count = 0;
 
-	const double dt = 10000; // 10000 seconds == 2.77777 hours
+	//const double dt = 10000; // 10000 seconds == 2.77777 hours
 
-	proceed_symplectic4(mercury_pos, mercury_vel, grav_constant, dt);
-	 
-	positions.push_back(mercury_pos);
 
 	static bool calculated_ellipse = false;
 
-	if (calculated_ellipse == false && frame_count % 200 == 0)
-		ellipse_positions.push_back(positions[positions.size() - 1]);
+	//if (true == calculated_ellipse)
+	//{
+	//	proceed_symplectic4(mercury_pos, mercury_vel, grav_constant, dt);
+	//	positions.push_back(mercury_pos);
+	//}
 
-	if (false == calculated_ellipse && ellipse_positions.size() == 3)
+	//if (calculated_ellipse == false && positions.size() != 0 && frame_count % 200 == 0)
+	//	ellipse_positions.push_back(positions[positions.size() - 1]);
+
+	if (false == calculated_ellipse)
 	{
 		calculated_ellipse = true;
 
 		// Must have exactly 3 observations
 		vector<timestamp_azimuth_data> measurements =
 		{
-			{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
-			{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
-			{hours_to_seconds(52), deg_to_rad(352) + pi / 2}
+			//{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
+			//{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
+			//{hours_to_seconds(52), deg_to_rad(352) + pi / 2}
+
+			{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
+			{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},
+			{hours_to_seconds(52), deg_to_rad(-8) + pi / 2}
+
+			//{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
+			//{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
+			//{hours_to_seconds(48), deg_to_rad(357.95) + pi / 2}
 		};
 
 		// Produce 2 radii and velocities
@@ -1048,11 +477,6 @@ void idle_func(void)
 			double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
 			double r = cbrt((grav_constant * sun_mass) / (omega * omega));
 			double v = omega * r;
-
-			// Output results
-			//cout << "Angular velocity (omega): " << omega << endl;
-			//cout << "Orbital radius (r): " << r << " meters" << endl;
-			//cout << "Orbital linear velocity (v): " << v << " meters per second" << endl;
 
 			data_points[i].angular_velocity = omega;
 			data_points[i].radius = r;
@@ -1082,22 +506,33 @@ void idle_func(void)
 
 
 		// Convert input data to Cartesian coordinates
-		//cartesian_point cart0 = to_cartesian(data_point_0.radius, angle0);
+		cartesian_point cart0 = to_cartesian(data_point_0.radius, angle0);
 		cartesian_point cart1 = to_cartesian(r1, angle1);
 		cartesian_point cart2 = to_cartesian(r2, angle2);
 
-		//cartesian_point vel0;
-		//vel0.x = (cart1.x - cart0.x) / (measurements[1].timestamp - measurements[0].timestamp);
-		//vel0.y = (cart1.y - cart0.y) / (measurements[1].timestamp - measurements[0].timestamp);
+		cartesian_point vel0;
+		vel0.x = (cart1.x - cart0.x) / (measurements[1].timestamp - measurements[0].timestamp);
+		vel0.y = (cart1.y - cart0.y) / (measurements[1].timestamp - measurements[0].timestamp);
 
 		cartesian_point vel1;
 		vel1.x = (cart2.x - cart1.x) / (measurements[2].timestamp - measurements[1].timestamp);
 		vel1.y = (cart2.y - cart1.y) / (measurements[2].timestamp - measurements[1].timestamp);
 
-		cartesian_point curr_pos = cart1;
+
+
+		cartesian_point curr_pos = cart2;
 		cartesian_point curr_vel = vel1;
 
+		cout << curr_vel.length() << endl;
+
+		//cout << curr_pos.x << ' ' << curr_pos.y << endl;
+		//cout << curr_vel.x << ' ' << curr_vel.y << endl;
+
+
+		double dt = measurements[2].timestamp - measurements[1].timestamp;
+
 		orbit_points[0] = curr_pos;
+		orbit_velocities[0] = curr_vel;
 
 		for (size_t i = 1; i < 5; i++)
 		{
@@ -1108,57 +543,50 @@ void idle_func(void)
 			accel.x = -grav_dir.x / distance * (grav_constant * sun_mass / pow(distance, 2.0));
 			accel.y = -grav_dir.y / distance * (grav_constant * sun_mass / pow(distance, 2.0));
 
-			curr_vel.x += accel.x * dt;
+			curr_vel.x += accel.x *	dt;
 			curr_vel.y += accel.y * dt;
 
 			curr_pos.x += curr_vel.x * dt;
 			curr_pos.y += curr_vel.y * dt;
 
 			orbit_points[i] = curr_pos;
+			orbit_velocities[i] = curr_vel;
+
+			cout << curr_vel.length() << endl;
 		}
+			
+		//for (size_t i = 0; i < ellipse_positions.size(); i++)
+		//    points.push_back(Point(ellipse_positions[i].x, ellipse_positions[i].y));
+
+		//EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
+
+
+		Eigen::MatrixXd A;
+		Eigen::VectorXd b;
+		gatherConstraints(orbit_points, orbit_velocities, A, b);
+
+		// Solve for ellipse coefficients
+		std::vector<double> coefficients = solveEllipseCoefficients(A, b);
+
+		// Extract ellipse parameters
+		EllipseParams2 params = extractEllipseParams(coefficients, cartesian_point(0, 0));
+
+		// Output results
+		std::cout << "Semi-Major Axis: " << params.semiMajorAxis << std::endl;
+		std::cout << "Eccentricity: " << params.eccentricity << std::endl;
+		std::cout << "Angle (radians): " << params.angle << std::endl;
 
 
 
-        //for (size_t i = 0; i < ellipse_positions.size(); i++)
-        //    points.push_back(Point(ellipse_positions[i].x, ellipse_positions[i].y));
 
-
-        EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
-
-
-		global_ep.angle = ep.angle;
-		global_ep.centerX = ep.centerX;
-		global_ep.centerY = ep.centerY;
-		global_ep.semiMajor = ep.semiMajor;
-		global_ep.semiMinor = ep.semiMinor;
-
-
-
-
+		//mercury_pos.x = cart1.x;
+		//mercury_pos.y = cart1.y;
+		//mercury_vel.x = vel1.x;
+		//mercury_vel.y = vel1.y;
 
 		carts.push_back(cart1);
 		carts.push_back(cart2);
 		//carts.push_back(cart0);
-
-
-		//cout << "LENGTHS" << endl;
-		//cout << cart1.length() << ' ' << cart2.length() << endl;
-
-		//cout << "CART1" << endl;
-		//cout << cart1.x << ' ' << cart1.y << endl;
-
-		//cout << "CART2" << endl;
-		//cout << cart2.x << ' ' << cart2.y << endl;
-
-
-		//cout << to_spherical(cart1.x, cart1.y).x << endl;
-		//cout << to_spherical(cart1.x, cart1.y).y << endl;
-
-		//cout << to_spherical(cart1.x, cart1.y).x << endl;
-		//cout << to_spherical(cart2.x, cart2.y).y << endl;
-
-		//cout << measurements[1].azimuth << ' ' << measurements[2].azimuth << endl;
-
 	}
 
 	frame_count++;
@@ -1248,15 +676,14 @@ void draw_objects(void)
 		glVertex3d(carts[0].x, carts[0].y, 0);
 
 		glColor3f(0.0, 1.0, 0.0);
-		glVertex3d(carts[1].x, carts[1].y, 0);
-
-
-		//glColor3f(1.0, 0.0, 1.0);
-
-		//for (size_t i = 0; i < orbit_points.size(); i++)
-		//	glVertex3d(orbit_points[i].x, orbit_points[i].y, 0);
+		glVertex3d(carts[1].x, carts[1].y, 0);	
 	}
 
+	//glColor3f(1.0, 0.0, 1.0);
+
+
+	for (size_t i = 0; i < orbit_points.size(); i++)
+		glVertex3d(orbit_points[i].x, orbit_points[i].y, 0);
 
 	glEnd();
 
@@ -1280,6 +707,9 @@ void draw_objects(void)
 
 
 	glPopMatrix();
+
+
+
 
 
 

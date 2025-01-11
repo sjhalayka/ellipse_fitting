@@ -236,7 +236,7 @@ EllipseParams_min extractEllipseParams(
 	double centerX = (2 * C * D - B * E) / (B * B - 4 * A * C);
 	double centerY = (2 * A * E - B * D) / (B * B - 4 * A * C);
 
-	global_ep.angle = theta;
+	global_ep.angle = theta + pi / 2;
 	global_ep.centerX = centerX;
 	global_ep.centerY = centerY;
 	global_ep.semiMajor = a;
@@ -278,13 +278,15 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 
 
+
+
+
+
+
+
 struct Point {
 	double x, y, vx, vy;
 };
-
-
-
-
 
 // Helper function for distance calculation
 double distance(double x1, double y1, double x2, double y2) {
@@ -295,26 +297,58 @@ double distance(double x1, double y1, double x2, double y2) {
 double objectiveFunction(const VectorXd& params, const vector<Point>& points, const Point& focus) {
     double h = params[0], k = params[1], a = params[2], b = params[3];
     double error = 0;
-    for (const auto& p : points) {
-        double dist1 = distance(p.x, p.y, h, k);
+  
+	double e = sqrt(1 - (b * b) / (a * a));
+
+	//cout << "Semi axes" << endl;
+	//cout << a << " " << b << endl;
+
+	//double c = sqrt(a * a - b * b);
+
+	//Point focus0(0, a*e + k);
+	//Point focus1(0, -a*e + k);
+
+	//cout << "foci" << endl;
+	//cout << focus0.x << ' ' << focus0.y << endl;
+	//cout << focus1.x << ' ' << focus1.y << endl;
+
+
+
+	for (const auto& p : points)
+	{
+		//double local_error = ((p.x * p.x / (b * b)) + (p.y * p.y / (a * a)) - 1.0);
+		
+		double dist1 = distance(p.x, p.y, h, k);
         double dist2 = distance(p.x, p.y, focus.x, focus.y);
-        error += pow(dist1 + dist2 - 2 * a, 2); // Distance condition
+
+		//double ellipseEq = std::pow((p.x - h) / a, 2) +
+		//	std::pow((p.y - k) / b, 2) - 1;
+		//error += ellipseEq * ellipseEq;
+
+		error += pow(dist1 + dist2 - 2 * a, 2); // Distance condition
         
         // Since we're axis-aligned, we simplify velocity condition:
         // Velocity should be more in line with the axis of the ellipse
         double velError = 0;
-        if (abs(p.vx) > abs(p.vy)) { // Suggesting a is along x
-            velError = pow(p.vy / p.vx - (k - p.y) / (h - p.x), 2); // Check alignment with y
-        } else {
-            velError = pow(p.vx / p.vy - (h - p.x) / (k - p.y), 2); // Check alignment with x
+
+        if (abs(p.vx) > abs(p.vy)) 
+		{ // Suggesting a is along x
+			velError = pow(p.vy / p.vx - (k - p.y) / (h - p.x), 2); // Check alignment with y
         }
+		else
+		{
+			velError = pow(p.vx / p.vy - (h - p.x) / (k - p.y), 2); // Check alignment with x
+        }
+
         error += velError;
     }
+
     return error;
 }
 
 // Simple solver function using gradient descent (for demonstration)
-VectorXd solveEllipseParameters(const vector<Point>& points, const Point& focus) {
+VectorXd solveEllipseParameters(const vector<Point>& points, const Point& focus) 
+{
     VectorXd params(4); // h, k, a, b
 
 	vector<double> mvec;
@@ -328,7 +362,7 @@ VectorXd solveEllipseParameters(const vector<Point>& points, const Point& focus)
 
 	double m = mvec[4];
 	
-    params << m*0.5, m * 0.5, m * 0.5, m * 0.5; // Initial guess
+    params << m * 0.5, m * 0.5, m * 0.5, m * 0.5; // Initial guess
 
     int iterations = 100000;
     double stepSize = 0.00001;
@@ -348,6 +382,14 @@ VectorXd solveEllipseParameters(const vector<Point>& points, const Point& focus)
 
     return params;
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -535,7 +577,7 @@ void idle_func(void)
 		{
 			{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
 			{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
-			{hours_to_seconds(48), deg_to_rad(358) + pi / 2}
+			{hours_to_seconds(48), deg_to_rad(357.95) + pi / 2}
 
 			//{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
 			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},
@@ -597,13 +639,13 @@ void idle_func(void)
 
 
 		// Convert input data to Cartesian coordinates
-		cartesian_point cart0 = to_cartesian(data_point_0.radius, angle0);
+		//cartesian_point cart0 = to_cartesian(data_point_0.radius, angle0);
 		cartesian_point cart1 = to_cartesian(r1, angle1);
 		cartesian_point cart2 = to_cartesian(r2, angle2);
 
-		cartesian_point vel0;
-		vel0.x = (cart1.x - cart0.x) / (measurements[1].timestamp - measurements[0].timestamp);
-		vel0.y = (cart1.y - cart0.y) / (measurements[1].timestamp - measurements[0].timestamp);
+		//cartesian_point vel0;
+		//vel0.x = (cart1.x - cart0.x) / (measurements[1].timestamp - measurements[0].timestamp);
+		//vel0.y = (cart1.y - cart0.y) / (measurements[1].timestamp - measurements[0].timestamp);
 
 		cartesian_point vel1;
 		vel1.x = (cart2.x - cart1.x) / (measurements[2].timestamp - measurements[1].timestamp);
@@ -613,9 +655,6 @@ void idle_func(void)
 
 		cartesian_point curr_pos = cart1;
 		cartesian_point curr_vel = vel1;
-
-		cout << curr_vel.length() << endl;
-
 
 		double dt = measurements[2].timestamp - measurements[1].timestamp;
 
@@ -666,6 +705,9 @@ void idle_func(void)
 
 
 
+
+
+
 		vector<Point> points;
 	
 		Point point0(orbit_points[0].x, orbit_points[0].y, orbit_velocities[0].x, orbit_velocities[0].y);
@@ -692,13 +734,21 @@ void idle_func(void)
 		global_ep.semiMajor = a;
 		global_ep.semiMinor = b;
 
-		//cout << global_ep.angle << endl;
-		//cout << global_ep.centerX << endl;
-		//cout << global_ep.centerY << endl;
-		//cout << global_ep.semiMajor << endl;
-		//cout << global_ep.semiMinor << endl;
+		cout << global_ep.angle << endl;
+		cout << global_ep.centerX << endl;
+		cout << global_ep.centerY << endl;
+		cout << global_ep.semiMajor << endl;
+		cout << global_ep.semiMinor << endl;
 
 	
+
+
+
+
+
+
+
+
 
 
 

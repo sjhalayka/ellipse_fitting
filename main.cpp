@@ -317,9 +317,18 @@ double objectiveFunction(const VectorXd& params, const vector<Point>& points, co
 VectorXd solveEllipseParameters(const vector<Point>& points, const Point& focus) {
     VectorXd params(4); // h, k, a, b
 
-	double m = max(abs(points[0].x), abs(points[0].y));
+	vector<double> mvec;
+	mvec.push_back(max(abs(points[0].x), abs(points[0].y)));
+	mvec.push_back(max(abs(points[1].x), abs(points[1].y)));
+	mvec.push_back(max(abs(points[2].x), abs(points[2].y)));
+	mvec.push_back(max(abs(points[3].x), abs(points[3].y)));
+	mvec.push_back(max(abs(points[4].x), abs(points[4].y)));
+
+	sort(mvec.begin(), mvec.end());
+
+	double m = mvec[4];
 	
-    params << m/2.0, m/2.0, m/2.0, m/2.0; // Initial guess
+    params << m*0.5, m * 0.5, m * 0.5, m * 0.5; // Initial guess
 
     int iterations = 100000;
     double stepSize = 0.00001;

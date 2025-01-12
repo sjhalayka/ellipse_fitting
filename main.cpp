@@ -367,9 +367,7 @@ double objectiveFunction(
 	const vector<cartesian_point>& velocities,
 	const cartesian_point& focus)
 {
-	double h = params[0], k = params[1], a = params[2], b = params[3],
-		f2_x = params[4], f2_y = params[5];
-
+	double h = params[0], k = params[1], a = params[2], b = params[3];
 	double error = 0;
 
 	EllipseParameters2 ep;
@@ -383,7 +381,7 @@ double objectiveFunction(
 	focus1(0) = focus.x;
 	focus1(1) = focus.y;
 
-	Eigen::Vector2d focus2(f2_x, f2_y);// = calculateSecondFocus(ep, focus1);
+	Eigen::Vector2d focus2 = calculateSecondFocus(ep, focus1);
 
 	for (size_t i = 0; i < points.size(); i++)
 	{
@@ -397,14 +395,14 @@ double objectiveFunction(
 
 		// Since we're axis-aligned, we simplify velocity condition:
 		// Velocity should be more in line with the axis of the ellipse
-		//double velError = 0;
+		double velError = 0;
 
-		//if (abs(v.x) > abs(v.y)) // Suggesting a is along x
-		//	velError = pow(v.y / v.x - (k - p.y) / (h - p.x), 2); // Check alignment with y
-		//else
-		//	velError = pow(v.x / v.y - (h - p.x) / (k - p.y), 2); // Check alignment with x
+		if (abs(v.x) > abs(v.y)) // Suggesting a is along x
+			velError = pow(v.y / v.x - (k - p.y) / (h - p.x), 2); // Check alignment with y
+		else
+			velError = pow(v.x / v.y - (h - p.x) / (k - p.y), 2); // Check alignment with x
 
-		//error += velError;
+		error += velError;
 	}
 
 	return error;
@@ -429,14 +427,14 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 
 	const double d = (mvec[4] - mvec[0]) / mvec[4];
 
-	VectorXd params(6); // h, k, a, b, f2_x, f2_y
+	VectorXd params(4); // h, k, a, b
 
 	cout << "d: " << d << endl;
 
 	if (d < 0.1)
-		params << 1, 1, m, m, 1, 1; // Initial guess
+		params << 1, 1, m, m; // Initial guess
 	else
-		params << 1, 1, m * 0.125, m * 0.125, 1, 1; // Initial guess
+		params << 1, 1, m * 0.125, m * 0.125; // Initial guess
 
 
 	int iterations = 100000;
@@ -444,9 +442,9 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 
 	for (int i = 0; i < iterations; i++)
 	{
-		VectorXd gradient = VectorXd::Zero(6);
+		VectorXd gradient = VectorXd::Zero(4);
 
-		for (int j = 0; j < 6; j++)
+		for (int j = 0; j < 4; j++)
 		{
 			VectorXd paramsPlus = params;
 			paramsPlus[j] += stepSize;
@@ -1234,7 +1232,7 @@ void motion_func(int x, int y)
 
 	}
 
-	main_camera.Set(); // Calculate new camera vectors.
+	main_camera.Set(); 
 }
 
 void passive_motion_func(int x, int y)

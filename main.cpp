@@ -355,23 +355,25 @@ Eigen::VectorXd ellipseParamsToCoefficients(double h, double k, double a, double
 
 
 // Helper function for distance calculation
-double distance(double x1, double y1, double x2, double y2) 
+double distance(double x1, double y1, double x2, double y2)
 {
-    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
+	return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
 }
 
 // Objective function for optimization (least squares)
 double objectiveFunction(
-	const VectorXd& params, 
-	const vector<cartesian_point>& points, 
-	const vector<cartesian_point>& velocities, 
-	const cartesian_point& focus) 
+	const VectorXd& params,
+	const vector<cartesian_point>& points,
+	const vector<cartesian_point>& velocities,
+	const cartesian_point& focus)
 {
-    double h = params[0], k = params[1], a = params[2], b = params[3];
-    double error = 0;
+	double h = params[0], k = params[1], a = params[2], b = params[3],
+		f2_x = params[4], f2_y = params[5];
+
+	double error = 0;
 
 	EllipseParameters2 ep;
-	ep.angle = 0; 
+	ep.angle = 0;
 	ep.center(0) = 0;
 	ep.center(1) = k;
 	ep.semi_major_axis = a;
@@ -381,31 +383,31 @@ double objectiveFunction(
 	focus1(0) = focus.x;
 	focus1(1) = focus.y;
 
-	Eigen::Vector2d focus2 = calculateSecondFocus(ep, focus1);
- 
-	for(size_t i = 0; i < points.size(); i++)
+	Eigen::Vector2d focus2(f2_x, f2_y);// = calculateSecondFocus(ep, focus1);
+
+	for (size_t i = 0; i < points.size(); i++)
 	{
 		cartesian_point p = points[i];
 		cartesian_point v = velocities[i];
 
-		double dist1 = distance(p.x, p.y,  focus1(0),  focus1(1));
-		double dist2 = distance(p.x, p.y,  focus2(0),  focus2(1));
+		double dist1 = distance(p.x, p.y, focus1(0), focus1(1));
+		double dist2 = distance(p.x, p.y, focus2(0), focus2(1));
 
 		error += pow(dist1 + dist2 - 2 * a, 2);
 
-        // Since we're axis-aligned, we simplify velocity condition:
-        // Velocity should be more in line with the axis of the ellipse
-        double velError = 0;
+		// Since we're axis-aligned, we simplify velocity condition:
+		// Velocity should be more in line with the axis of the ellipse
+		//double velError = 0;
 
-        if (abs(v.x) > abs(v.y)) // Suggesting a is along x
-			velError = pow(v.y / v.x - (k - p.y) / (h - p.x), 2); // Check alignment with y
-		else
-			velError = pow(v.x / v.y - (h - p.x) / (k - p.y), 2); // Check alignment with x
+		//if (abs(v.x) > abs(v.y)) // Suggesting a is along x
+		//	velError = pow(v.y / v.x - (k - p.y) / (h - p.x), 2); // Check alignment with y
+		//else
+		//	velError = pow(v.x / v.y - (h - p.x) / (k - p.y), 2); // Check alignment with x
 
-        error += velError;
-    }
+		//error += velError;
+	}
 
-    return error;
+	return error;
 }
 
 // Simple solver function using gradient descent (for demonstration)
@@ -426,38 +428,38 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 	const double m = mvec[4];
 
 	const double d = (mvec[4] - mvec[0]) / mvec[4];
-	
-	VectorXd params(4); // h, k, a, b
+
+	VectorXd params(6); // h, k, a, b, f2_x, f2_y
 
 	cout << "d: " << d << endl;
 
-	if(d < 0.1)
-	params << 1, 1, m, m; // Initial guess
+	if (d < 0.1)
+		params << 1, 1, m, m, 1, 1; // Initial guess
 	else
-	params << 1, 1, m*0.125, m*0.125; // Initial guess
+		params << 1, 1, m * 0.125, m * 0.125, 1, 1; // Initial guess
 
 
 	int iterations = 100000;
-    double stepSize = 0.0001;
+	double stepSize = 0.0001;
 
-    for (int i = 0; i < iterations; i++) 
+	for (int i = 0; i < iterations; i++)
 	{
-        VectorXd gradient = VectorXd::Zero(4);
+		VectorXd gradient = VectorXd::Zero(6);
 
-        for (int j = 0; j < 4; j++) 
+		for (int j = 0; j < 6; j++)
 		{
-            VectorXd paramsPlus = params;
-            paramsPlus[j] += stepSize;
-            VectorXd paramsMinus = params;
-            paramsMinus[j] -= stepSize;
-            
-            gradient[j] = (objectiveFunction(paramsPlus, points, velocities, focus) - objectiveFunction(paramsMinus, points, velocities, focus)) / (2 * stepSize);
-        }
+			VectorXd paramsPlus = params;
+			paramsPlus[j] += stepSize;
+			VectorXd paramsMinus = params;
+			paramsMinus[j] -= stepSize;
 
-        params -= stepSize * gradient;
-    }
+			gradient[j] = (objectiveFunction(paramsPlus, points, velocities, focus) - objectiveFunction(paramsMinus, points, velocities, focus)) / (2 * stepSize);
+		}
 
-    return params;
+		params -= stepSize * gradient;
+	}
+
+	return params;
 }
 
 
@@ -677,7 +679,7 @@ void idle_func(void)
 			//{hours_to_seconds(0),   hours_to_radians(4.79) + pi / 2},
 			//{hours_to_seconds(96),  hours_to_radians(4.78) + pi / 2},
 			//{hours_to_seconds(192), hours_to_radians(4.77) + pi / 2}
-	
+
 		};
 
 
@@ -812,7 +814,7 @@ void idle_func(void)
 		cout << global_ep.semiMajor << endl;
 		cout << global_ep.semiMinor << endl;
 
-	
+
 
 
 

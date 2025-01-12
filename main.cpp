@@ -664,7 +664,7 @@ void idle_func(void)
 		{
 			{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
 			{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
-			{hours_to_seconds(48), deg_to_rad(358) + pi / 2}
+			{hours_to_seconds(48), deg_to_rad(357.95) + pi / 2}
 
 			//{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
 			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},

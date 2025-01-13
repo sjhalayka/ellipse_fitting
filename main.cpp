@@ -437,28 +437,16 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 	// Use the maximum distance data	
 	const double m = mvec[4];
 		
-	const double d =  1 - (mvec[4] - mvec[0]) / mvec[4];
+	const double d = (mvec[4] - mvec[0]) / mvec[4];
 
-	//double fx = (0.5 + 0.5*sin(2 * pi * d));
+	double fx = 1 - d;// 1 - sin(pi * d);
 
-	//double fx =   0.5 + 0.5 * (exp(pi * ((d)-0.5)) - 1);
-
-	double fx = 1 - sin(pi * (d));
-
-	fx = pow(fx, 4.0);
-
-	//double fx = sin(pi * d - pi / 2) / 2 + 0.5;
-
-	cout << "fx: " << fx << endl;
+	fx = pow(fx, 10.0);
 
 	VectorXd params(4); // h, k, a, b
 
-	cout << "d: " << d << endl;
+	params << 1, 1, m*  fx * (1 - d), m * (fx) * (1 - d); // Initial guess
 
-	//if (d < 0.001)
-	//	params << 1, 1, m, m; // initial guess
-	//else
-		params << 1, 1, m*  fx, m * (fx); // Initial guess
 
 
 	int iterations = 1000;

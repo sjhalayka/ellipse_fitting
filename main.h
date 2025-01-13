@@ -45,6 +45,8 @@ using std::map;
 #include <utility>
 using std::pair;
 
+#include <random>
+
 
 void idle_func(void);
 void init_opengl(const int &width, const int &height);

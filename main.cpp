@@ -391,6 +391,9 @@ double objectiveFunction(
 		double dist1 = distance(p.x, p.y, focus1(0), focus1(1));
 		double dist2 = distance(p.x, p.y, focus2(0), focus2(1));
 
+		//double x = pow(p.x, 2.0) / pow(a, 2.0) + pow(p.y, 2.0) / pow(b, 2.0) - 1;
+	//	error += x*x;
+
 		error += pow(dist1 + dist2 - 2 * a, 2);
 
 
@@ -399,8 +402,8 @@ double objectiveFunction(
 		cartesian_point centre(focus.x, focus.y);
 		double focal_dist = (f2 - centre).length();
 		double c = std::sqrt(std::abs(a * a - b * b));  // focal distance from center
-	
-		error += 1e2*std::pow(focal_dist - c, 2.0);
+
+		error += std::pow(focal_dist - c, 2.0);
 
 		// Since we're axis-aligned, we simplify velocity condition:
 		// Velocity should be more in line with the axis of the ellipse
@@ -431,22 +434,34 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 
 	sort(mvec.begin(), mvec.end());
 
-	// Use the maximum distance data
+	// Use the maximum distance data	
 	const double m = mvec[4];
+		
+	const double d =  1 - (mvec[4] - mvec[0]) / mvec[4];
 
-	const double d = (mvec[4] - mvec[0]) / mvec[4];
+	//double fx = (0.5 + 0.5*sin(2 * pi * d));
+
+	//double fx =   0.5 + 0.5 * (exp(pi * ((d)-0.5)) - 1);
+
+	double fx = 1 - sin(pi * (d));
+
+	//fx = sqrt(fx);
+
+	//double fx = sin(pi * d - pi / 2) / 2 + 0.5;
+
+	cout << "fx: " << fx << endl;
 
 	VectorXd params(4); // h, k, a, b
 
 	cout << "d: " << d << endl;
 
-	if (d < 0.1)
-		params << 1, 1, m, m; // Initial guess
-	else
-		params << 1, 1, m * 0.125, m * 0.125; // Initial guess
+	//if (d < 0.001)
+	//	params << 1, 1, m, m; // initial guess
+	//else
+		params << 1, 1, m*  fx, m * (fx); // Initial guess
 
 
-	int iterations = 100000;
+	int iterations = 1000;
 	double stepSize = 0.0001;
 
 	for (int i = 0; i < iterations; i++)
@@ -468,22 +483,6 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 
 	return params;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -809,60 +808,17 @@ void idle_func(void)
 
 		double h = params[0], k = params[1], a = params[2], b = params[3];
 
-		global_ep.angle = 0;
+		global_ep.angle = pi/2;
 		global_ep.centerX = 0;
 		global_ep.centerY = k;
-		global_ep.semiMajor = a;
-		global_ep.semiMinor = b;
+		global_ep.semiMajor = b;
+		global_ep.semiMinor = a;
 
 		cout << global_ep.angle << endl;
 		cout << global_ep.centerX << endl;
 		cout << global_ep.centerY << endl;
 		cout << global_ep.semiMajor << endl;
 		cout << global_ep.semiMinor << endl;
-
-
-
-
-
-
-
-
-
-
-
-
-		//std::vector<Eigen::Vector2d> points = {
-		//	Eigen::Vector2d(orbit_points[0].x, orbit_points[0].y),
-		//	Eigen::Vector2d(orbit_points[1].x, orbit_points[1].y),
-		//	Eigen::Vector2d(orbit_points[2].x, orbit_points[2].y),
-		//	Eigen::Vector2d(orbit_points[3].x, orbit_points[3].y),
-		//	Eigen::Vector2d(orbit_points[4].x, orbit_points[4].y)
-		//};
-
-		//Eigen::Vector2d focus(0, 0);
-
-		//EllipseFitter fitter;
-
-		//auto params1 = fitter.fitEllipse(points, focus, ErrorMetric::ALGEBRAIC);
-		////auto params1 = fitter.fitEllipse(points, focus, ErrorMetric::GEOMETRIC);
-		////auto params1 = fitter.fitEllipse(points, focus, ErrorMetric::FOCAL_SUM);
-		////auto params4 = fitter.fitEllipse(points, focus); // Uses HYBRID by default
-
-
-		//global_ep.angle = params1.angle;
-		//global_ep.centerX = params1.center.x();
-		//global_ep.centerY = params1.center.y();
-		//global_ep.semiMajor = params1.semi_major_axis;
-		//global_ep.semiMinor = params1.semi_major_axis * sqrt(1 - params1.eccentricity*params1.eccentricity);
-
-		//cout << global_ep.angle << endl;
-		//cout << global_ep.centerX << endl;
-		//cout << global_ep.centerY << endl;
-		//cout << global_ep.semiMajor << endl;
-		//cout << global_ep.semiMinor << endl;
-
-
 
 
 

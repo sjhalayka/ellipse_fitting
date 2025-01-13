@@ -445,7 +445,7 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 
 	double fx = 1 - sin(pi * (d));
 
-	fx = pow(fx, 3.0);
+	fx = pow(fx, 4.0);
 
 	//double fx = sin(pi * d - pi / 2) / 2 + 0.5;
 
@@ -672,7 +672,7 @@ void idle_func(void)
 		{
 			{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
 			{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
-			{hours_to_seconds(48), deg_to_rad(358) + pi / 2}
+			{hours_to_seconds(48), deg_to_rad(357.9) + pi / 2}
 
 			//{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
 			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},

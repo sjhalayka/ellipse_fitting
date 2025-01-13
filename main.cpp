@@ -399,20 +399,19 @@ double objectiveFunction(
 		cartesian_point centre(focus.x, focus.y);
 		double focal_dist = (f2 - centre).length();
 		double c = std::sqrt(std::abs(a * a - b * b));  // focal distance from center
-		double focus_error = std::abs(focal_dist - c);
-
-		error += 1/0.125*focus_error*focus_error;
+	
+		error += 1e2*std::pow(focal_dist - c, 2.0);
 
 		// Since we're axis-aligned, we simplify velocity condition:
 		// Velocity should be more in line with the axis of the ellipse
-		double velError = 0;
+		//double velError = 0;
 
-		if (abs(v.x) > abs(v.y)) // Suggesting a is along x
-			velError = pow(v.y / v.x - (k - p.y) / (h - p.x), 2); // Check alignment with y
-		else
-			velError = pow(v.x / v.y - (h - p.x) / (k - p.y), 2); // Check alignment with x
+		//if (abs(v.x) > abs(v.y)) // Suggesting a is along x
+		//	velError = pow(v.y / v.x - (k - p.y) / (h - p.x), 2); // Check alignment with y
+		//else
+		//	velError = pow(v.x / v.y - (h - p.x) / (k - p.y), 2); // Check alignment with x
 
-		error += velError;
+		//error += velError;
 	}
 
 	return error;
@@ -674,7 +673,7 @@ void idle_func(void)
 		{
 			{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
 			{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
-			{hours_to_seconds(48), deg_to_rad(358) + pi / 2}
+			{hours_to_seconds(48), deg_to_rad(357.95) + pi / 2}
 
 			//{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
 			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},

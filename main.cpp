@@ -441,10 +441,7 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 	d = pow(1 - d, 20.0);
 
 	VectorXd params(4); // h, k, a, b
-
 	params << 1, 1, m * d, m * d; // Initial guess
-
-
 
 	int iterations = 1000;
 	double stepSize = 0.0001;
@@ -657,7 +654,7 @@ void idle_func(void)
 		{
 			{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
 			{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
-			{hours_to_seconds(48), deg_to_rad(358) + pi / 2}
+			{hours_to_seconds(48), deg_to_rad(357.95) + pi / 2}
 
 			//{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
 			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},

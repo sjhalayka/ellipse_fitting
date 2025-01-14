@@ -367,11 +367,11 @@ double objectiveFunction(
 	const vector<cartesian_point>& velocities,
 	const cartesian_point& focus)
 {
-	double h = params[0], k = params[1], a = params[2], b = params[3];
+	double h = params[0], k = params[1], a = params[2], b = params[3], angle = params[4];
 	double error = 0;
 
 	EllipseParameters2 ep;
-	ep.angle = 0;
+	ep.angle = angle;
 	ep.center(0) = 0;
 	ep.center(1) = k;
 	ep.semi_major_axis = a;
@@ -391,19 +391,14 @@ double objectiveFunction(
 		double dist1 = distance(p.x, p.y, focus1(0), focus1(1));
 		double dist2 = distance(p.x, p.y, focus2(0), focus2(1));
 
-		//double x = pow(p.x, 2.0) / pow(a, 2.0) + pow(p.y, 2.0) / pow(b, 2.0) - 1;
-	//	error += x*x;
-
 		error += pow(dist1 + dist2 - 2 * a, 2);
 
-
-
 		cartesian_point f2(focus2(0), focus2(1));
-		cartesian_point centre(focus.x, focus.y);
+		cartesian_point centre(h, k);
 		double focal_dist = (f2 - centre).length();
 		double c = std::sqrt(std::abs(a * a - b * b));  // focal distance from center
 
-		//error += std::pow(focal_dist - c, 2.0);
+		error += std::pow(focal_dist - c, 2.0);
 
 		// Since we're axis-aligned, we simplify velocity condition:
 		// Velocity should be more in line with the axis of the ellipse
@@ -438,19 +433,19 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 	const double m = mvec[4];
 
 	double d = (mvec[4] - mvec[0]) / mvec[4];
-	d = pow(1 - d, 10.0);
+	d = pow(1 - d, 20.0);
 
-	VectorXd params(4); // h, k, a, b
-	params << 1, 1, m* d, m* d; // Initial guess
+	VectorXd params(5); // h, k, a, b, angle
+	params << 1, 1, m*d, m*d, 0; // Initial guess
 
-	int iterations = 1000;
+	int iterations = 100000;
 	double stepSize = 0.0001;
 
 	for (int i = 0; i < iterations; i++)
 	{
-		VectorXd gradient = VectorXd::Zero(4);
+		VectorXd gradient = VectorXd::Zero(5);
 
-		for (int j = 0; j < 4; j++)
+		for (int j = 0; j < 5; j++)
 		{
 			VectorXd paramsPlus = params;
 			paramsPlus[j] += stepSize;
@@ -733,7 +728,7 @@ void idle_func(void)
 		cartesian_point curr_pos = cart1;
 		cartesian_point curr_vel = vel1;
 
-		double dt = measurements[2].timestamp - measurements[1].timestamp;
+		double dt = (measurements[2].timestamp - measurements[1].timestamp);
 
 		orbit_points[0] = curr_pos;
 		orbit_velocities[0] = curr_vel;
@@ -788,9 +783,9 @@ void idle_func(void)
 
 		VectorXd params = solveEllipseParameters(orbit_points, orbit_velocities, cartesian_point(0, 0));
 
-		double h = params[0], k = params[1], a = params[2], b = params[3];
+		double h = params[0], k = params[1], a = params[2], b = params[3], angle = params[4];
 
-		global_ep.angle = 0;// pi / 2;
+		global_ep.angle = angle;
 		global_ep.centerX = 0;
 		global_ep.centerY = k;
 		global_ep.semiMajor = a;

@@ -437,13 +437,12 @@ VectorXd solveEllipseParameters(const vector<cartesian_point>& points, const vec
 	// Use the maximum distance data	
 	const double m = mvec[4];
 		
-	const double d = (mvec[4] - mvec[0]) / mvec[4];
-
-	double fx = pow(1 - d, 10.0);
+	double d = (mvec[4] - mvec[0]) / mvec[4];
+	d = pow(1 - d, 20.0);
 
 	VectorXd params(4); // h, k, a, b
 
-	params << 1, 1, m * fx * fx, m * fx * fx; // Initial guess
+	params << 1, 1, m * d, m * d; // Initial guess
 
 
 
@@ -658,7 +657,7 @@ void idle_func(void)
 		{
 			{hours_to_seconds(0),  deg_to_rad(360) + pi / 2},
 			{hours_to_seconds(24), deg_to_rad(359) + pi / 2},
-			{hours_to_seconds(48), deg_to_rad(357.97) + pi / 2}
+			{hours_to_seconds(48), deg_to_rad(358) + pi / 2}
 
 			//{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
 			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},

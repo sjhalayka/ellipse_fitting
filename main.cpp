@@ -398,6 +398,8 @@ void idle_func(void)
 
 		gaussMethod(r1_, r2_, r3_, t1_, t2_, t3_);
 
+		// Bootstrap the numerical integration,
+		// to double check the results
 		mercury_pos.x = orbit_points[0].x;
 		mercury_pos.y = orbit_points[0].y;
 		mercury_vel.x = orbit_velocities[0].x;

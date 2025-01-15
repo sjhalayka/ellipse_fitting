@@ -325,12 +325,8 @@ void idle_func(void)
 			{hours_to_seconds(48), deg_to_rad(2.01)}
 		};
 
-
-
-
-
 		// Produce 2 radii
-		vector<double> data_points(2);
+		vector<double> radii_data(2);
 
 		// Constant angular velocity, for example
 		//double omega = 4.31e-8; // Ceres average angular velocity
@@ -342,15 +338,15 @@ void idle_func(void)
 			const double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
 			const double r = cbrt((grav_constant * sun_mass) / (omega * omega));
 
-			data_points[i] = r;
+			radii_data[i] = r;
 		}
 
 		// Produce input data
 		const double angle1 = measurements[1].azimuth;
-		const double r1 = data_points[0];
+		const double r1 = radii_data[0];
 
 		const double angle2 = measurements[2].azimuth;
-		const double r2 = data_points[1];
+		const double r2 = radii_data[1];
 
 		// Convert input data to Cartesian coordinates
 		cartesian_point cart1 = to_cartesian(r1, angle1);

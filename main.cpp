@@ -83,8 +83,28 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 
 // Structure to represent a 3D vector
-struct vector_3d {
+class vector_3d {
+
+public:
 	double x, y, z;
+
+	//vector_3d operator-(const vector_3d& rhs) const
+	//{
+	//	vector_3d ret;
+	//	ret.x = x - rhs.x;
+	//	ret.y = y - rhs.y;
+	//	ret.z - z - rhs.z;
+	//	return ret;
+	//}
+
+	//vector_3d operator+(const vector_3d& rhs) const
+	//{
+	//	vector_3d ret;
+	//	ret.x = x + rhs.x;
+	//	ret.y = y + rhs.y;
+	//	ret.z - z + rhs.z;
+	//	return ret;
+	//}
 };
 
 // Function to calculate the magnitude of a vector
@@ -129,11 +149,14 @@ void gaussMethod(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, 
 	// Calculate the center of the ellipse
 	vector_3d center;
 	center.x = 0;
-	center.y = -a_orbit * e;
 	center.z = 0;
 
+	const double dx = (magnitude(r2) - magnitude(r1)) + (magnitude(r3) - magnitude(r2));
 
-
+	if (dx < 0)
+		center.y = -a_orbit * e;
+	else
+		center.y = a_orbit * e;
 
 	// Print the orbital elements
 	std::cout << "Center of the ellipse: (" << center.x << ", " << center.y << ") m" << std::endl;
@@ -317,9 +340,13 @@ void idle_func(void)
 		// Must have exactly 3 observations to produce the input data
 		vector<timestamp_azimuth_data> measurements =
 		{
+			//{hours_to_seconds(0),  deg_to_rad(0)},
+			//{hours_to_seconds(24), deg_to_rad(1)},
+			//{hours_to_seconds(48), deg_to_rad(2.01)}
+
 			{hours_to_seconds(0),  deg_to_rad(0)},
 			{hours_to_seconds(24), deg_to_rad(1)},
-			{hours_to_seconds(48), deg_to_rad(2.01)}
+			{hours_to_seconds(48), deg_to_rad(1.99)}
 		};
 
 		// Produce 2 radii

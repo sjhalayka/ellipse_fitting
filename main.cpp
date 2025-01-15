@@ -129,7 +129,7 @@ void gaussMethod(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, 
 	// Calculate the center of the ellipse
 	vector_3d center;
 	center.x = 0;
-	center.y = a_orbit * e;
+	center.y = -a_orbit * e;
 	center.z = 0;
 
 
@@ -263,11 +263,11 @@ struct timestamp_azimuth_data
 	double azimuth; // radians
 };
 
-struct radius_velocity_data
+struct radius_data
 {
-	double angular_velocity;
+//	double angular_velocity;
 	double radius;
-	double velocity;
+//	double velocity;
 };
 
 cartesian_point to_cartesian(double radius, double azimuth)
@@ -327,34 +327,17 @@ void idle_func(void)
 		// Must have exactly 3 observations
 		vector<timestamp_azimuth_data> measurements =
 		{
-			//{hours_to_seconds(0),  deg_to_rad(360)},
-			//{hours_to_seconds(24), deg_to_rad(359)},
-			//{hours_to_seconds(48), deg_to_rad(358.01)}
-
 			{hours_to_seconds(0),  deg_to_rad(0)},
-			{hours_to_seconds(24), deg_to_rad(-1)},
-			{hours_to_seconds(48), deg_to_rad(-2.01)}
-
-			//{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
-			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},
-			//{hours_to_seconds(52), deg_to_rad(-8) + pi / 2}
-
-			//{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
-			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},
-			//{hours_to_seconds(48), deg_to_rad(-2.01) + pi / 2}
-
-			//{hours_to_seconds(0),   hours_to_radians(4.79) + pi / 2},
-			//{hours_to_seconds(96),  hours_to_radians(4.78) + pi / 2},
-			//{hours_to_seconds(192), hours_to_radians(4.77) + pi / 2}
-
+			{hours_to_seconds(24), deg_to_rad(1)},
+			{hours_to_seconds(48), deg_to_rad(2.01)}
 		};
 
 
 
 
 
-		// Produce 2 radii and velocities
-		vector<radius_velocity_data> data_points(2);
+		// Produce 2 radii
+		vector<double> data_points(2);
 
 		// Constant angular velocity, for example
 		//double omega = 4.31e-8; // Ceres average angular velocity
@@ -363,50 +346,26 @@ void idle_func(void)
 		for (size_t i = 0; i < measurements.size() - 1; i++)
 		{
 			// Variable angular velocity
-			double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
-			double r = cbrt((grav_constant * sun_mass) / (omega * omega));
-			double v = omega * r;
+			const double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
+			const double r = cbrt((grav_constant * sun_mass) / (omega * omega));
 
-			data_points[i].angular_velocity = omega;
-			data_points[i].radius = r;
-			data_points[i].velocity = v;
+			data_points[i] = r;
 		}
 
 		// Produce input data
+		const double angle1 = measurements[1].azimuth;
+		const double r1 = data_points[0];
 
-		double angle0 = measurements[0].azimuth;
-		double omega = data_points[0].angular_velocity;
-		double r = cbrt((grav_constant * sun_mass) / (omega * omega));
-		double v = omega * r;
-		radius_velocity_data data_point_0;
-		data_point_0.angular_velocity = omega;
-		data_point_0.radius = r;
-		data_point_0.velocity = v;
-
-		double angle1 = measurements[1].azimuth;
-		double r1 = data_points[0].radius;
-		double v1 = data_points[0].velocity;
-		double a1 = data_points[0].angular_velocity;
-
-		double angle2 = measurements[2].azimuth;
-		double r2 = data_points[1].radius;
-		double v2 = data_points[1].velocity;
-		double a2 = data_points[1].angular_velocity;
+		const double angle2 = measurements[2].azimuth;
+		const double r2 = data_points[1];
 
 		// Convert input data to Cartesian coordinates
-	//	cartesian_point cart0 = to_cartesian(data_point_0.radius, angle0);
 		cartesian_point cart1 = to_cartesian(r1, angle1);
 		cartesian_point cart2 = to_cartesian(r2, angle2);
-
-		//cartesian_point vel0;
-		//vel0.x = (cart1.x - cart0.x) / (measurements[1].timestamp - measurements[0].timestamp);
-		//vel0.y = (cart1.y - cart0.y) / (measurements[1].timestamp - measurements[0].timestamp);
 
 		cartesian_point vel1;
 		vel1.x = (cart2.x - cart1.x) / (measurements[2].timestamp - measurements[1].timestamp);
 		vel1.y = (cart2.y - cart1.y) / (measurements[2].timestamp - measurements[1].timestamp);
-
-
 
 		cartesian_point curr_pos = cart1;
 		cartesian_point curr_vel = vel1;
@@ -440,8 +399,8 @@ void idle_func(void)
 		vector_3d r3_ = { orbit_points[2].x, orbit_points[2].y, 0.0 };
 
 		double t1_ = 0.0;
-		double t2_ = dt_;// hours_to_seconds(24);
-		double t3_ = 2 * dt_;// hours_to_seconds(48);// 2 * dt;
+		double t2_ = dt_; 
+		double t3_ = 2 * dt_;
 
 		gaussMethod(r1_, r2_, r3_, t1_, t2_, t3_);
 

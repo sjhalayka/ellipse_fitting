@@ -299,8 +299,8 @@ void idle_func(void)
 {
 	static size_t frame_count = 0;
 
+	// For numerical integration
 	const double dt = 10000; // 10000 seconds == 2.77777 hours
-
 
 	static bool calculated_ellipse = false;
 
@@ -310,14 +310,11 @@ void idle_func(void)
 		positions.push_back(mercury_pos);
 	}
 
-	//if (calculated_ellipse == false && positions.size() != 0 && frame_count % 200 == 0)
-	//	ellipse_positions.push_back(positions[positions.size() - 1]);
-
 	if (false == calculated_ellipse)
 	{
 		calculated_ellipse = true;
-			
-		// Must have exactly 3 observations
+
+		// Must have exactly 3 observations to produce the input data
 		vector<timestamp_azimuth_data> measurements =
 		{
 			{hours_to_seconds(0),  deg_to_rad(0)},
@@ -359,6 +356,7 @@ void idle_func(void)
 		cartesian_point curr_pos = cart1;
 		cartesian_point curr_vel = vel1;
 
+		// For the analytical method
 		double dt_ = (measurements[2].timestamp - measurements[1].timestamp);
 
 		orbit_points[0] = curr_pos;

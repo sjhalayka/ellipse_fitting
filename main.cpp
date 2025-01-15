@@ -263,12 +263,6 @@ struct timestamp_azimuth_data
 	double azimuth; // radians
 };
 
-struct radius_data
-{
-//	double angular_velocity;
-	double radius;
-//	double velocity;
-};
 
 cartesian_point to_cartesian(double radius, double azimuth)
 {
@@ -297,7 +291,6 @@ cartesian_point to_spherical(double x, double y)
 
 vector<cartesian_point> carts;
 vector<cartesian_point> orbit_points(5);
-
 vector<cartesian_point> orbit_velocities(5);
 
 
@@ -375,7 +368,9 @@ void idle_func(void)
 		orbit_points[0] = curr_pos;
 		orbit_velocities[0] = curr_vel;
 
-		for (size_t i = 1; i < 5; i++)
+		const size_t num_points_needed = 3;
+
+		for (size_t i = 1; i < num_points_needed; i++)
 		{
 			const cartesian_point grav_dir = cartesian_point(curr_pos);
 			const double distance = grav_dir.length();
@@ -386,7 +381,6 @@ void idle_func(void)
 
 			curr_vel.x += accel.x * dt_;
 			curr_vel.y += accel.y * dt_;
-
 			curr_pos.x += curr_vel.x * dt_;
 			curr_pos.y += curr_vel.y * dt_;
 

@@ -82,10 +82,6 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 
 
-// Constants
-const double MU_SUN = 1.32712440042e20; // Gravitational parameter of the Sun (m^3/s^2)
-const double PI = 3.14159265358979323846;
-
 // Structure to represent a 3D vector
 struct vector_3d {
 	double x, y, z;
@@ -122,10 +118,10 @@ void gaussMethod(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, 
 	vector_3d h = crossProduct(r2, v2);
 
 	// Calculate the semi-major axis
-	double a_orbit = 1.0 / (2.0 / magnitude(r2) - dotProduct(v2, v2) / MU_SUN);
+	double a_orbit = 1.0 / (2.0 / magnitude(r2) - dotProduct(v2, v2) / (sun_mass*grav_constant));
 
 	// Calculate the eccentricity
-	double e = sqrt(1.0 - (magnitude(h) * magnitude(h) / (MU_SUN * a_orbit)));
+	double e = sqrt(1.0 - (magnitude(h) * magnitude(h) / ((sun_mass * grav_constant) * a_orbit)));
 
 	// Calculate the semi-minor axis
 	double b_orbit = a_orbit * sqrt(1.0 - e * e);

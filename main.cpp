@@ -1370,9 +1370,12 @@ void gaussMethod(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, 
 
 	// Calculate the center of the ellipse
 	vector_3d center;
-	center.x = 0;// = { (r1.x + r2.x + r3.x) / 3.0, (r1.y + r2.y + r3.y) / 3.0, 0.0 };
+	center.x = 0;
 	center.y = a_orbit * e;
 	center.z = 0;
+
+
+
 
 	// Print the orbital elements
 	std::cout << "Center of the ellipse: (" << center.x << ", " << center.y << ") m" << std::endl;
@@ -1562,14 +1565,18 @@ void idle_func(void)
 	if (false == calculated_ellipse)
 	{
 		calculated_ellipse = true;
-
+			
 		// Must have exactly 3 observations
 		vector<timestamp_azimuth_data> measurements =
 		{
-			{hours_to_seconds(0),  deg_to_rad(360)},
-			{hours_to_seconds(24), deg_to_rad(359)},
-			{hours_to_seconds(48), deg_to_rad(357.98)}
-				
+			//{hours_to_seconds(0),  deg_to_rad(360)},
+			//{hours_to_seconds(24), deg_to_rad(359)},
+			//{hours_to_seconds(48), deg_to_rad(358.01)}
+
+			{hours_to_seconds(0),  deg_to_rad(0)},
+			{hours_to_seconds(24), deg_to_rad(-1)},
+			{hours_to_seconds(48), deg_to_rad(-2.01)}
+
 			//{hours_to_seconds(0),  deg_to_rad(0) + pi / 2},
 			//{hours_to_seconds(24), deg_to_rad(-1) + pi / 2},
 			//{hours_to_seconds(52), deg_to_rad(-8) + pi / 2}
@@ -2067,6 +2074,19 @@ void idle_func(void)
 
 
 
+//vector_3d r1_ = { cart0.x, cart0.y, 0.1 };
+//vector_3d r2_ = { cart1.x, cart1.y, 0.2 };
+//vector_3d r3_ = { cart2.x, cart2.y, 0.3 };
+//
+//// Define the time points
+//double t1_ = 0.0;
+//double t2_ = ;
+//double t3_ = ;
+//
+
+
+
+
 
 
 vector_3d r1_ = { orbit_points[0].x, orbit_points[0].y, 0.0 };
@@ -2078,7 +2098,6 @@ double t2_ = dt_;// hours_to_seconds(24);
 double t3_ = 2 * dt_;// hours_to_seconds(48);// 2 * dt;
 
 gaussMethod(r1_, r2_, r3_, t1_, t2_, t3_);
-
 
 
 

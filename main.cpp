@@ -351,8 +351,6 @@ double calculateOrbitRadius(double omega, double omegaDot, double GM)
 	double correctedRadius = radius + velocityAdjustment * radius; // Approximate correction
 
 	return correctedRadius;
-
-
 }
 
 
@@ -392,7 +390,7 @@ void idle_func(void)
 
 
 		// Constant angular velocity, for example
-		//double omega = 4.31e-8; // Ceres average angular velocity
+		//double omega_min = 4.31e-8; // Ceres average angular velocity
 		//double omega_min = 1.99e-7; // Earth average angular velocity
 
 

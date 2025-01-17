@@ -382,22 +382,21 @@ void idle_func(void)
 			//{hours_to_seconds(24), deg_to_rad(1)},
 			//{hours_to_seconds(48), deg_to_rad(2.01)}
 
+			//{hours_to_seconds(0),  deg_to_rad(360 - 360)},
+			//{hours_to_seconds(24), deg_to_rad(360 - 359)},
+			//{hours_to_seconds(48), deg_to_rad(360 - 357.99)}
+
 			{hours_to_seconds(0),  deg_to_rad(0)},
 			{hours_to_seconds(24), deg_to_rad(1)},
 			{hours_to_seconds(48), deg_to_rad(1.99)}
 		};
 
-
-
-		// Constant angular velocity, for example
-		//double omega_min = 4.31e-8; // Ceres average angular velocity
-		//double omega_min = 1.99e-7; // Earth average angular velocity
-
-
 		double prev_omega = (measurements[1].azimuth - measurements[0].azimuth) / (measurements[1].timestamp - measurements[0].timestamp);
 
+		// Produce 3 angular accelerations. The first one isn't actually used,
+		// so just use a quick dummy value of zero
 		vector<double> d_omega_data;
-		d_omega_data.push_back(prev_omega);
+		d_omega_data.push_back(0);
 
 		for (size_t i = 0; i < measurements.size() - 1; i++)
 		{
@@ -412,9 +411,10 @@ void idle_func(void)
 
 		const double constant_angular_acceleration = d_omega_data[d_omega_data.size() - 1];
 
-		// Produce 3 radii
+		// Produce 3 radii. The first one isn't actually used,
+		// so just use a quick dummy value of zero
 		vector<double> radii_data;		
-		radii_data.push_back(calculateOrbitRadius(prev_omega, 0, sun_mass * grav_constant));
+		radii_data.push_back(0);
 
 		for (size_t i = 0; i < measurements.size() - 1; i++)
 		{
@@ -427,7 +427,6 @@ void idle_func(void)
 
 			radii_data.push_back(radius);
 		}
-
 
 		// Produce input data
 		const double angle1 = measurements[1].azimuth;
@@ -464,6 +463,7 @@ void idle_func(void)
 			accel.x = -grav_dir.x / distance * (grav_constant * sun_mass / pow(distance, 2.0));
 			accel.y = -grav_dir.y / distance * (grav_constant * sun_mass / pow(distance, 2.0));
 
+			// Use Euler integration
 			curr_vel.x += accel.x * dt_;
 			curr_vel.y += accel.y * dt_;
 			curr_pos.x += curr_vel.x * dt_;

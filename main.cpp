@@ -28,9 +28,6 @@ public:
 	}
 };
 
-//struct Point {
-//	double x, y;
-//};
 
 class EllipseParameters
 {
@@ -43,8 +40,9 @@ public:
 };
 
 
+// Used to draw things in the OpenGL code
 EllipseParameters global_ep;
-vector<array<double, 3Ui64>> double_check_ellipse_points;
+
 
 
 
@@ -105,24 +103,6 @@ class vector_3d {
 
 public:
 	double x, y, z;
-
-	//vector_3d operator-(const vector_3d& rhs) const
-	//{
-	//	vector_3d ret;
-	//	ret.x = x - rhs.x;
-	//	ret.y = y - rhs.y;
-	//	ret.z - z - rhs.z;
-	//	return ret;
-	//}
-
-	//vector_3d operator+(const vector_3d& rhs) const
-	//{
-	//	vector_3d ret;
-	//	ret.x = x + rhs.x;
-	//	ret.y = y + rhs.y;
-	//	ret.z - z + rhs.z;
-	//	return ret;
-	//}
 };
 
 // Function to calculate the magnitude of a vector
@@ -177,19 +157,16 @@ void gaussMethod(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, 
 		center.y = a_orbit * e;
 
 	// Print the orbital elements
-	std::cout << "Center of the ellipse: (" << center.x << ", " << center.y << ") m" << std::endl;
-	std::cout << "Semi-major axis: " << a_orbit << " m" << std::endl;
-	std::cout << "Semi-minor axis: " << b_orbit << " m" << std::endl;
-	std::cout << "Eccentricity: " << e << std::endl;
+	//std::cout << "Center of the ellipse: (" << center.x << ", " << center.y << ") m" << std::endl;
+	//std::cout << "Semi-major axis: " << a_orbit << " m" << std::endl;
+	//std::cout << "Semi-minor axis: " << b_orbit << " m" << std::endl;
+	//std::cout << "Eccentricity: " << e << std::endl;
 
 	global_ep.angle = 0;
 	global_ep.centerX = center.x;
 	global_ep.centerY = center.y;
 	global_ep.semiMajor = a_orbit;
 	global_ep.semiMinor = b_orbit;
-
-
-
 }
 
 
@@ -252,7 +229,7 @@ void proceed_RK4(custom_math::vector_3& pos, custom_math::vector_3& vel, const d
 
 void proceed_symplectic4(custom_math::vector_3& pos, custom_math::vector_3& vel, const double G, const double dt)
 {
-	static double const cr2 = pow(2.0, 1.0 / 3.0);
+	static double const cr2 = cbrt(2.0);
 
 	static const double c[4] =
 	{
@@ -382,10 +359,6 @@ void idle_func(void)
 			//{hours_to_seconds(24), deg_to_rad(1)},
 			//{hours_to_seconds(48), deg_to_rad(2.01)}
 
-			//{hours_to_seconds(0),  deg_to_rad(360 - 360)},
-			//{hours_to_seconds(24), deg_to_rad(360 - 359)},
-			//{hours_to_seconds(48), deg_to_rad(360 - 357.99)}
-
 			{hours_to_seconds(0),  deg_to_rad(0)},
 			{hours_to_seconds(24), deg_to_rad(1)},
 			{hours_to_seconds(48), deg_to_rad(1.99)}
@@ -409,7 +382,8 @@ void idle_func(void)
 			d_omega_data.push_back(d_omega);
 		}
 
-		const double constant_angular_acceleration = d_omega_data[d_omega_data.size() - 1];
+		// Use the last d_omega element to serve as the angular acceleration
+		const double constant_angular_acceleration = d_omega_data[2];
 
 		// Produce 3 radii. The first one isn't actually used,
 		// so just use a quick dummy value of zero

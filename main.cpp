@@ -330,8 +330,8 @@ cartesian_point to_spherical(double x, double y)
 
 
 vector<cartesian_point> carts;
-vector<cartesian_point> orbit_points(6);
-vector<cartesian_point> orbit_velocities(6);
+vector<cartesian_point> orbit_points;
+vector<cartesian_point> orbit_velocities;
 
 
 
@@ -430,10 +430,10 @@ void idle_func(void)
 
 		// Produce input data
 		const double angle1 = measurements[1].azimuth;
-		const double r1 = radii_data[1]; // use constant angular acceleration
+		const double r1 = radii_data[1];
 
 		const double angle2 = measurements[2].azimuth;
-		const double r2 = radii_data[2]; // use constant angular acceleration 
+		const double r2 = radii_data[2];
 
 		// Convert input data to Cartesian coordinates
 		cartesian_point cart1 = to_cartesian(r1, angle1);
@@ -449,28 +449,22 @@ void idle_func(void)
 		// For the analytical method
 		double dt_ = (measurements[2].timestamp - measurements[1].timestamp);
 
-		orbit_points[0] = curr_pos;
-		orbit_velocities[0] = curr_vel;
-
 		const size_t num_points_needed = 3;
 
+		orbit_points.push_back(curr_pos);
+		orbit_velocities.push_back(curr_vel);
+
+		// Calculate (num_points_needed - 1) position and velocity data
 		for (size_t i = 1; i < num_points_needed; i++)
 		{
-			const cartesian_point grav_dir = cartesian_point(curr_pos);
-			const double distance = grav_dir.length();
+			vector_3 curr_pos_3d(curr_pos.x, curr_pos.y, 0);
+			vector_3 curr_vel_3d(curr_vel.x, curr_vel.y, 0);
+			proceed_symplectic4(curr_pos_3d, curr_vel_3d, grav_constant, dt_);
+			curr_pos = cartesian_point(curr_pos_3d.x, curr_pos_3d.y);
+			curr_vel = cartesian_point(curr_vel_3d.x, curr_vel_3d.y);
 
-			cartesian_point accel;
-			accel.x = -grav_dir.x / distance * (grav_constant * sun_mass / pow(distance, 2.0));
-			accel.y = -grav_dir.y / distance * (grav_constant * sun_mass / pow(distance, 2.0));
-
-			// Use Euler integration
-			curr_vel.x += accel.x * dt_;
-			curr_vel.y += accel.y * dt_;
-			curr_pos.x += curr_vel.x * dt_;
-			curr_pos.y += curr_vel.y * dt_;
-
-			orbit_points[i] = curr_pos;
-			orbit_velocities[i] = curr_vel;
+			orbit_points.push_back(curr_pos);
+			orbit_velocities.push_back(curr_vel);
 		}
 
 		vector_3d r1_ = { orbit_points[0].x, orbit_points[0].y, 0.0 };

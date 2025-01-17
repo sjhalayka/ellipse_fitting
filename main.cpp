@@ -531,10 +531,10 @@ void idle_func(void)
 		cartesian_point curr_pos = cart1;
 		cartesian_point curr_vel = vel1;
 
-		// For the analytical method
+		// For the analytical method and the numerical method
 		dt = (measurements[2].timestamp - measurements[1].timestamp);
 
-		const size_t num_points_needed = 6;
+		const size_t num_points_needed = 3;
 
 		orbit_points.push_back(curr_pos);
 		orbit_velocities.push_back(curr_vel);
@@ -568,7 +568,7 @@ void idle_func(void)
 
 
 		// Bootstrap the numerical integration,
-		// to double check the results
+		// to visualy double check the results
 		mercury_pos.x = orbit_points[0].x;
 		mercury_pos.y = orbit_points[0].y;
 		mercury_vel.x = orbit_velocities[0].x;
@@ -656,21 +656,10 @@ void draw_objects(void)
 
 	glVertex3d(sun_pos.x, sun_pos.y, sun_pos.z);
 
-	//if (carts.size() > 0)
-	//{
-	//	glColor3f(1.0, 0.0, 0.0);
-	//	glVertex3d(carts[0].x, carts[0].y, 0);
-
-	//	glColor3f(0.0, 1.0, 0.0);
-	//	glVertex3d(carts[1].x, carts[1].y, 0);
-	//}
-
 	//glColor3f(1.0, 0.0, 1.0);
 
-
-	for (size_t i = 0; i < orbit_points.size(); i++)
-		glVertex3d(orbit_points[i].x, orbit_points[i].y, 0);
-
+	//for (size_t i = 0; i < orbit_points.size(); i++)
+	//	glVertex3d(orbit_points[i].x, orbit_points[i].y, 0);
 
 	glColor3f(0.0, 1.0, 0.0);
 
@@ -678,11 +667,6 @@ void draw_objects(void)
 		glVertex3d(positions[i].x, positions[i].y, 0);
 
 	glEnd();
-
-
-
-
-
 
 
 	glPushMatrix();
@@ -695,83 +679,12 @@ void draw_objects(void)
 
 	DrawEllipse(global_ep.centerX, global_ep.centerY, global_ep.semiMinor, global_ep.semiMajor, 100);
 
-
-
-
 	glPopMatrix();
 
 
 
 
 
-
-	//glBegin(GL_POINTS);
-
-	//glColor3f(1.0, 0.0, 0.0);
-
-	//for (size_t i = 0; i < double_check_ellipse_points.size(); i++)
-	//	glVertex3d(double_check_ellipse_points[i][0], double_check_ellipse_points[i][1], double_check_ellipse_points[i][2]);
-
-	//glEnd();
-
-
-
-	//glBegin(GL_TRIANGLES);
-
-	//glColor3f(1.0, 1.0, 1.0);
-
-	//for (size_t i = 0; i < triangles.size(); i++)
-	//{
-	//	glVertex3d(triangles[i].vertex[0].x, triangles[i].vertex[0].y, 0);
-	//	glVertex3d(triangles[i].vertex[1].x, triangles[i].vertex[1].y, 0);
-	//	glVertex3d(triangles[i].vertex[2].x, triangles[i].vertex[2].y, 0);
-
-	//}
-
-	//glEnd();
-
-
-	//glLineWidth(1.0f);
-
-	//glBegin(GL_LINES);
-	//glColor3f(1.0, 0.5, 0.0);
-
-	//for (size_t i = 0; i < line_segments.size(); i++)
-	//{
-	//	glVertex3d(line_segments[i].vertex[0].x, line_segments[i].vertex[0].y, 0);
-	//	glVertex3d(line_segments[i].vertex[1].x, line_segments[i].vertex[1].y, 0);
-	//}
-
-	//glEnd();
-
-
- //   
- //   
-	//// If we do draw the axis at all, make sure not to draw its outline.
-	//if(true == draw_axis)
-	//{
-	//	glBegin(GL_LINES);
-
-	//	glColor3f(1, 0, 0);
-	//	glVertex3f(0, 0, 0);
-	//	glVertex3f(1, 0, 0);
-	//	glColor3f(0, 1, 0);
-	//	glVertex3f(0, 0, 0);
-	//	glVertex3f(0, 1, 0);
-	//	glColor3f(0, 0, 1);
-	//	glVertex3f(0, 0, 0);
-	//	glVertex3f(0, 0, 1);
-
-	//	glColor3f(0.5, 0.5, 0.5);
-	//	glVertex3f(0, 0, 0);
-	//	glVertex3f(-1, 0, 0);
-	//	glVertex3f(0, 0, 0);
-	//	glVertex3f(0, -1, 0);
-	//	glVertex3f(0, 0, 0);
-	//	glVertex3f(0, 0, -1);
-
-	//	glEnd();
-	//}
 
 	glPopMatrix();
 }

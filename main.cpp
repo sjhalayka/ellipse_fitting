@@ -82,6 +82,24 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // Structure to represent a 3D vector
 class vector_3d {
 
@@ -138,7 +156,7 @@ void gaussMethod(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, 
 	vector_3d h = crossProduct(r2, v2);
 
 	// Calculate the semi-major axis
-	double a_orbit = 1.0 / (2.0 / magnitude(r2) - dotProduct(v2, v2) / (sun_mass*grav_constant));
+	double a_orbit = 1.0 / (2.0 / magnitude(r2) - dotProduct(v2, v2) / (sun_mass * grav_constant));
 
 	// Calculate the eccentricity
 	double e = sqrt(1.0 - (magnitude(h) * magnitude(h) / ((sun_mass * grav_constant) * a_orbit)));
@@ -311,10 +329,32 @@ cartesian_point to_spherical(double x, double y)
 
 
 
-
 vector<cartesian_point> carts;
-vector<cartesian_point> orbit_points(5);
-vector<cartesian_point> orbit_velocities(5);
+vector<cartesian_point> orbit_points(6);
+vector<cartesian_point> orbit_velocities(6);
+
+
+
+double calculateOrbitRadius(double omega, double omegaDot, double GM) 
+{
+	// Check for valid angular velocity
+	if (omega <= 0) 
+	{
+		throw std::invalid_argument("Angular velocity must be positive.");
+	}
+
+	// Calculate the radius using Newton's dynamics
+	double radius = std::cbrt(GM / (omega * omega)); // Approximation for circular part
+
+	// Adjust for angular velocity derivative
+	double velocityAdjustment = -omegaDot / (2 * omega);
+	double correctedRadius = radius + velocityAdjustment * radius; // Approximate correction
+
+	return correctedRadius;
+
+
+}
+
 
 
 
@@ -356,13 +396,20 @@ void idle_func(void)
 		//double omega = 4.31e-8; // Ceres average angular velocity
 		//double omega_min = 1.99e-7; // Earth average angular velocity
 
+
+		double prev_omega = (measurements[1].azimuth - measurements[0].azimuth) / (measurements[1].timestamp - measurements[0].timestamp);
+
 		for (size_t i = 0; i < measurements.size() - 1; i++)
 		{
 			// Variable angular velocity
 			const double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
-			const double r = cbrt((grav_constant * sun_mass) / (omega * omega));
 
-			radii_data[i] = r;
+			const double d_omega = 0.0;// (omega - prev_omega) / (measurements[i + 1].timestamp - measurements[i].timestamp);
+			prev_omega = omega;
+	
+			const double radius = calculateOrbitRadius(omega, d_omega, sun_mass*grav_constant);
+
+			radii_data[i] = radius;
 		}
 
 		// Produce input data
@@ -389,7 +436,7 @@ void idle_func(void)
 		orbit_points[0] = curr_pos;
 		orbit_velocities[0] = curr_vel;
 
-		const size_t num_points_needed = 3;
+		const size_t num_points_needed = 6;
 
 		for (size_t i = 1; i < num_points_needed; i++)
 		{
@@ -414,10 +461,15 @@ void idle_func(void)
 		vector_3d r3_ = { orbit_points[2].x, orbit_points[2].y, 0.0 };
 
 		double t1_ = 0.0;
-		double t2_ = dt_; 
+		double t2_ = dt_;
 		double t3_ = 2 * dt_;
 
 		gaussMethod(r1_, r2_, r3_, t1_, t2_, t3_);
+
+
+
+
+
 
 		// Bootstrap the numerical integration,
 		// to double check the results

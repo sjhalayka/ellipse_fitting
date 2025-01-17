@@ -305,8 +305,6 @@ cartesian_point to_spherical(double x, double y)
 
 
 
-
-vector<cartesian_point> carts;
 vector<cartesian_point> orbit_points;
 vector<cartesian_point> orbit_velocities;
 
@@ -333,12 +331,129 @@ double calculateOrbitRadius(double omega, double omegaDot, double GM)
 
 
 
+
+EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
+{
+	double a = coefficients(0);
+	double b = coefficients(1);
+	double c = coefficients(2);
+	double d = coefficients(3);
+	double e = coefficients(4);
+	double f = 1;// coefficients(5);
+
+
+	// Calculate center
+	double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
+	double centerY = (2 * a * e - b * d) / (b * b - 4 * a * c);
+
+	// Calculate rotation angle
+	double theta = 0.5 * atan2(b, (a - c));
+
+	// Calculate semi-axes
+	double ct = cos(theta);
+	double st = sin(theta);
+	double ct2 = ct * ct;
+	double st2 = st * st;
+	double a2 = a * ct2 + b * ct * st + c * st2;
+	double c2 = a * st2 - b * ct * st + c * ct2;
+
+	// Calculate constants
+	double term = 2 * (a * centerX * centerX + b * centerX * centerY +
+		c * centerY * centerY + d * centerX + e * centerY + f);
+
+	double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
+	double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
+
+	if (a2 > c2) {
+		std::swap(semiMajor, semiMinor);
+		theta += pi / 2;
+	}
+
+	EllipseParameters params;
+	params.centerX = centerX;
+	params.centerY = centerY;
+	params.semiMajor = semiMajor;
+	params.semiMinor = semiMinor;
+	params.angle = theta;
+
+	return params;
+}
+
+
+EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const cartesian_point& focus)
+{
+	if (points.size() != 6) {
+		std::cerr << "Error: Exactly 6 points are required.\n";
+		return EllipseParameters();
+	}
+
+	Eigen::MatrixXd A(6, 6);
+	Eigen::VectorXd b(6);
+
+	// Fill the matrix A and vector b with the equations from the points
+	for (size_t i = 0; i < 6; ++i)
+	{
+		double x = points[i].x;
+		double y = points[i].y;
+		A(i, 0) = x * x;       // Coefficient for x^2
+		A(i, 1) = x * y;       // Coefficient for xy
+		A(i, 2) = y * y;       // Coefficient for y^2
+		A(i, 3) = x;           // Coefficient for x
+		A(i, 4) = y;           //  Coefficient for y
+		A(i, 5) = 1;           // Constant term
+		b(i) = -1;             // Right-hand side is -1. This is important!
+	}
+
+	// Solve for the ellipse parameters
+	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+
+	// Extract parameters
+	//double A_ = ellipseParams(0);
+	//double B_ = ellipseParams(1);
+	//double C_ = ellipseParams(2);
+	//double D_ = ellipseParams(3);
+	//double E_ = ellipseParams(4);
+	//double F_ = ellipseParams(5);
+
+
+
+
+	// Compute center of ellipse
+	EllipseParameters ep = extractEllipseParameters(ellipseParams);
+
+
+	global_ep.angle = ep.angle;
+	global_ep.centerX = ep.centerX;
+	global_ep.centerY = ep.centerY;
+	global_ep.semiMajor = ep.semiMajor;
+	global_ep.semiMinor = ep.semiMinor;
+
+	//cout << global_ep.angle << endl;
+	//cout << global_ep.centerX << endl;
+	//cout << global_ep.centerY << endl;
+	//cout << global_ep.semiMajor << endl;
+	//cout << global_ep.semiMinor << endl;
+
+
+	return ep;
+}
+
+
+
+
+
+
+
+
+
+
 void idle_func(void)
 {
 	static size_t frame_count = 0;
 
 	// For numerical integration
-	const double dt = 10000; // 10000 seconds == 2.77777 hours
+	// This variable is filled out upon finding the ellipse
+	static double dt = 0;
 
 	static bool calculated_ellipse = false;
 
@@ -417,9 +532,9 @@ void idle_func(void)
 		cartesian_point curr_vel = vel1;
 
 		// For the analytical method
-		double dt_ = (measurements[2].timestamp - measurements[1].timestamp);
+		dt = (measurements[2].timestamp - measurements[1].timestamp);
 
-		const size_t num_points_needed = 3;
+		const size_t num_points_needed = 6;
 
 		orbit_points.push_back(curr_pos);
 		orbit_velocities.push_back(curr_vel);
@@ -429,7 +544,7 @@ void idle_func(void)
 		{
 			vector_3 curr_pos_3d(curr_pos.x, curr_pos.y, 0);
 			vector_3 curr_vel_3d(curr_vel.x, curr_vel.y, 0);
-			proceed_symplectic4(curr_pos_3d, curr_vel_3d, grav_constant, dt_);
+			proceed_symplectic4(curr_pos_3d, curr_vel_3d, grav_constant, dt);
 			curr_pos = cartesian_point(curr_pos_3d.x, curr_pos_3d.y);
 			curr_vel = cartesian_point(curr_vel_3d.x, curr_vel_3d.y);
 
@@ -442,10 +557,15 @@ void idle_func(void)
 		vector_3d r3_ = { orbit_points[2].x, orbit_points[2].y, 0.0 };
 
 		double t1_ = 0.0;
-		double t2_ = dt_;
-		double t3_ = 2 * dt_;
+		double t2_ = dt;
+		double t3_ = 2 * dt;
 
 		gaussMethod(r1_, r2_, r3_, t1_, t2_, t3_);
+
+
+
+		//EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
+
 
 		// Bootstrap the numerical integration,
 		// to double check the results

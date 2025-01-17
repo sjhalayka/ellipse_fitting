@@ -420,11 +420,7 @@ void idle_func(void)
 		{
 			// Variable angular velocity
 			const double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
-
-			const double d_omega = constant_angular_acceleration;
-
-			const double radius = calculateOrbitRadius(omega, d_omega, sun_mass * grav_constant);
-
+			const double radius = calculateOrbitRadius(omega, constant_angular_acceleration, sun_mass * grav_constant);
 			radii_data.push_back(radius);
 		}
 

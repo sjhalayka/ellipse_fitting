@@ -396,7 +396,6 @@ void idle_func(void)
 
 		double prev_omega = (measurements[1].azimuth - measurements[0].azimuth) / (measurements[1].timestamp - measurements[0].timestamp);
 
-
 		vector<double> d_omega_data;
 		d_omega_data.push_back(prev_omega);
 
@@ -412,7 +411,8 @@ void idle_func(void)
 		}
 
 		const double constant_angular_acceleration = d_omega_data[d_omega_data.size() - 1];
-		// Produce 2 radii
+
+		// Produce 3 radii
 		vector<double> radii_data;		
 		radii_data.push_back(calculateOrbitRadius(prev_omega, 0, sun_mass * grav_constant));
 

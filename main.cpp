@@ -389,8 +389,7 @@ void idle_func(void)
 			{hours_to_seconds(48), deg_to_rad(1.99)}
 		};
 
-		// Produce 2 radii
-		vector<double> radii_data;
+
 
 		// Constant angular velocity, for example
 		//double omega = 4.31e-8; // Ceres average angular velocity
@@ -399,31 +398,45 @@ void idle_func(void)
 
 		double prev_omega = (measurements[1].azimuth - measurements[0].azimuth) / (measurements[1].timestamp - measurements[0].timestamp);
 
-		radii_data.push_back(calculateOrbitRadius(prev_omega, 0, sun_mass * grav_constant));
 
-		for (size_t i = 1; i < measurements.size(); i++)
+		vector<double> d_omega_data;
+		d_omega_data.push_back(prev_omega);
+
+		for (size_t i = 0; i < measurements.size() - 1; i++)
 		{
 			// Variable angular velocity
-			const double omega = (measurements[i].azimuth - measurements[i - 1].azimuth) / (measurements[i].timestamp - measurements[i - 1].timestamp);
+			const double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
 
-			const double d_omega = (omega - prev_omega) / (measurements[i].timestamp - measurements[i - 1].timestamp);
+			const double d_omega = (omega - prev_omega) / (measurements[i + 1].timestamp - measurements[i].timestamp);
 			prev_omega = omega;
 
+			d_omega_data.push_back(d_omega);
+		}
 
-			cout << "d_omega: " << d_omega << endl;
+		const double constant_angular_acceleration = d_omega_data[d_omega_data.size() - 1];
+		// Produce 2 radii
+		vector<double> radii_data;		
+		radii_data.push_back(calculateOrbitRadius(prev_omega, 0, sun_mass * grav_constant));
 
+		for (size_t i = 0; i < measurements.size() - 1; i++)
+		{
+			// Variable angular velocity
+			const double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
 
-			const double radius = calculateOrbitRadius(omega, d_omega, sun_mass*grav_constant);
+			const double d_omega = constant_angular_acceleration;
+
+			const double radius = calculateOrbitRadius(omega, d_omega, sun_mass * grav_constant);
 
 			radii_data.push_back(radius);
 		}
 
+
 		// Produce input data
 		const double angle1 = measurements[1].azimuth;
-		const double r1 = radii_data[1];
+		const double r1 = radii_data[1]; // use constant angular acceleration
 
 		const double angle2 = measurements[2].azimuth;
-		const double r2 = radii_data[2];
+		const double r2 = radii_data[2]; // use constant angular acceleration 
 
 		// Convert input data to Cartesian coordinates
 		cartesian_point cart1 = to_cartesian(r1, angle1);
@@ -442,7 +455,7 @@ void idle_func(void)
 		orbit_points[0] = curr_pos;
 		orbit_velocities[0] = curr_vel;
 
-		const size_t num_points_needed = 6;
+		const size_t num_points_needed = 3;
 
 		for (size_t i = 1; i < num_points_needed; i++)
 		{
@@ -471,11 +484,6 @@ void idle_func(void)
 		double t3_ = 2 * dt_;
 
 		gaussMethod(r1_, r2_, r3_, t1_, t2_, t3_);
-
-
-
-
-
 
 		// Bootstrap the numerical integration,
 		// to double check the results

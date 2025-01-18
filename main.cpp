@@ -123,20 +123,16 @@ double dotProduct(const vector_3d& v1, const vector_3d& v2) {
 }
 
 // Function to calculate the orbital elements using Gauss's method
-void gaussMethod(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, double t1, double t2, double t3) {
-	// Calculate the velocity vectors
-	vector_3d v1 = { (r2.x - r1.x) / (t2 - t1), (r2.y - r1.y) / (t2 - t1), 0.0 };
-	vector_3d v2 = { (r3.x - r1.x) / (t3 - t1), (r3.y - r1.y) / (t3 - t1), 0.0 };
-	vector_3d v3 = { (r3.x - r2.x) / (t3 - t2), (r3.y - r2.y) / (t3 - t2), 0.0 };
-
-	// Calculate the acceleration vector
-	vector_3d a = { (v3.x - v1.x) / (t3 - t1), (v3.y - v1.y) / (t3 - t1), 0.0 };
+void gauss_method(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, double t1, double t2, double t3) 
+{
+	// Calculate the velocity vector
+	vector_3d v = { (r3.x - r1.x) / (t3 - t1), (r3.y - r1.y) / (t3 - t1), 0.0 };
 
 	// Calculate the specific angular momentum vector
-	vector_3d h = crossProduct(r2, v2);
+	vector_3d h = crossProduct(r2, v);
 
 	// Calculate the semi-major axis
-	double a_orbit = 1.0 / (2.0 / magnitude(r2) - dotProduct(v2, v2) / (sun_mass * grav_constant));
+	double a_orbit = 1.0 / (2.0 / magnitude(r2) - dotProduct(v, v) / (sun_mass * grav_constant));
 
 	// Calculate the eccentricity
 	double e = sqrt(1.0 - (magnitude(h) * magnitude(h) / ((sun_mass * grav_constant) * a_orbit)));
@@ -364,8 +360,8 @@ void idle_func(void)
 
 		double prev_omega = (measurements[1].azimuth - measurements[0].azimuth) / (measurements[1].timestamp - measurements[0].timestamp);
 
-		// Produce 3 angular accelerations. The first one isn't actually used,
-		// so just use a quick dummy value of zero
+		// Produce 3 angular accelerations. Only the last one is actually used,
+		// so just use a quick dummy value of zero, for this one anyway
 		vector<double> d_omega_data;
 		d_omega_data.push_back(0);
 
@@ -380,7 +376,7 @@ void idle_func(void)
 			d_omega_data.push_back(d_omega);
 		}
 
-		// Use the last d_omega element to serve as the angular acceleration
+		// Use the last d_omega element to serve as the constant angular acceleration
 		const double constant_angular_acceleration = d_omega_data[2];
 
 		// Produce 3 radii. The first one isn't actually used,
@@ -444,7 +440,7 @@ void idle_func(void)
 		double t2_ = dt;
 		double t3_ = 2 * dt;
 
-		gaussMethod(r1_, r2_, r3_, t1_, t2_, t3_);
+		gauss_method(r1_, r2_, r3_, t1_, t2_, t3_);
 
 
 		// Bootstrap the numerical integration,

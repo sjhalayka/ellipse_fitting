@@ -156,12 +156,6 @@ void gaussMethod(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, 
 	else
 		center.y = a_orbit * e;
 
-	// Print the orbital elements
-	//std::cout << "Center of the ellipse: (" << center.x << ", " << center.y << ") m" << std::endl;
-	//std::cout << "Semi-major axis: " << a_orbit << " m" << std::endl;
-	//std::cout << "Semi-minor axis: " << b_orbit << " m" << std::endl;
-	//std::cout << "Eccentricity: " << e << std::endl;
-
 	global_ep.angle = 0;
 	global_ep.centerX = center.x;
 	global_ep.centerY = center.y;
@@ -172,7 +166,8 @@ void gaussMethod(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, 
 
 int main(int argc, char** argv)
 {
-	cout << setprecision(20) << endl;
+	cout << std::scientific << endl;
+//	cout << setprecision(20) << endl;
 
 	glutInit(&argc, argv);
 	init_opengl(win_x, win_y);
@@ -310,13 +305,11 @@ vector<cartesian_point> orbit_velocities;
 
 
 
-double calculateOrbitRadius(double omega, double omegaDot, double GM) 
+double calculate_orbit_radius(double omega, double omegaDot, double GM) 
 {
 	// Check for valid angular velocity
-	if (omega <= 0) 
-	{
-		throw std::invalid_argument("Angular velocity must be positive.");
-	}
+	if (omega <= 0)
+		return 0;
 
 	// Calculate the radius using Newton's dynamics
 	double radius = std::cbrt(GM / (omega * omega)); // Approximation for circular part
@@ -326,116 +319,6 @@ double calculateOrbitRadius(double omega, double omegaDot, double GM)
 	double correctedRadius = radius + velocityAdjustment * radius; // Approximate correction
 
 	return correctedRadius;
-}
-
-
-
-
-
-EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
-{
-	double a = coefficients(0);
-	double b = coefficients(1);
-	double c = coefficients(2);
-	double d = coefficients(3);
-	double e = coefficients(4);
-	double f = 1;// coefficients(5);
-
-
-	// Calculate center
-	double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
-	double centerY = (2 * a * e - b * d) / (b * b - 4 * a * c);
-
-	// Calculate rotation angle
-	double theta = 0.5 * atan2(b, (a - c));
-
-	// Calculate semi-axes
-	double ct = cos(theta);
-	double st = sin(theta);
-	double ct2 = ct * ct;
-	double st2 = st * st;
-	double a2 = a * ct2 + b * ct * st + c * st2;
-	double c2 = a * st2 - b * ct * st + c * ct2;
-
-	// Calculate constants
-	double term = 2 * (a * centerX * centerX + b * centerX * centerY +
-		c * centerY * centerY + d * centerX + e * centerY + f);
-
-	double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
-	double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
-
-	if (a2 > c2) {
-		std::swap(semiMajor, semiMinor);
-		theta += pi / 2;
-	}
-
-	EllipseParameters params;
-	params.centerX = centerX;
-	params.centerY = centerY;
-	params.semiMajor = semiMajor;
-	params.semiMinor = semiMinor;
-	params.angle = theta;
-
-	return params;
-}
-
-
-EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const cartesian_point& focus)
-{
-	if (points.size() != 6) {
-		std::cerr << "Error: Exactly 6 points are required.\n";
-		return EllipseParameters();
-	}
-
-	Eigen::MatrixXd A(6, 6);
-	Eigen::VectorXd b(6);
-
-	// Fill the matrix A and vector b with the equations from the points
-	for (size_t i = 0; i < 6; ++i)
-	{
-		double x = points[i].x;
-		double y = points[i].y;
-		A(i, 0) = x * x;       // Coefficient for x^2
-		A(i, 1) = x * y;       // Coefficient for xy
-		A(i, 2) = y * y;       // Coefficient for y^2
-		A(i, 3) = x;           // Coefficient for x
-		A(i, 4) = y;           //  Coefficient for y
-		A(i, 5) = 1;           // Constant term
-		b(i) = -1;             // Right-hand side is -1. This is important!
-	}
-
-	// Solve for the ellipse parameters
-	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-
-	// Extract parameters
-	//double A_ = ellipseParams(0);
-	//double B_ = ellipseParams(1);
-	//double C_ = ellipseParams(2);
-	//double D_ = ellipseParams(3);
-	//double E_ = ellipseParams(4);
-	//double F_ = ellipseParams(5);
-
-
-
-
-	// Compute center of ellipse
-	EllipseParameters ep = extractEllipseParameters(ellipseParams);
-
-
-	global_ep.angle = ep.angle;
-	global_ep.centerX = ep.centerX;
-	global_ep.centerY = ep.centerY;
-	global_ep.semiMajor = ep.semiMajor;
-	global_ep.semiMinor = ep.semiMinor;
-
-	//cout << global_ep.angle << endl;
-	//cout << global_ep.centerX << endl;
-	//cout << global_ep.centerY << endl;
-	//cout << global_ep.semiMajor << endl;
-	//cout << global_ep.semiMinor << endl;
-
-
-	return ep;
 }
 
 
@@ -509,7 +392,7 @@ void idle_func(void)
 		{
 			// Variable angular velocity
 			const double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
-			const double radius = calculateOrbitRadius(omega, constant_angular_acceleration, sun_mass * grav_constant);
+			const double radius = calculate_orbit_radius(omega, constant_angular_acceleration, sun_mass * grav_constant);
 			radii_data.push_back(radius);
 		}
 
@@ -552,6 +435,7 @@ void idle_func(void)
 			orbit_velocities.push_back(curr_vel);
 		}
 
+		// This needs 3 points
 		vector_3d r1_ = { orbit_points[0].x, orbit_points[0].y, 0.0 };
 		vector_3d r2_ = { orbit_points[1].x, orbit_points[1].y, 0.0 };
 		vector_3d r3_ = { orbit_points[2].x, orbit_points[2].y, 0.0 };
@@ -561,10 +445,6 @@ void idle_func(void)
 		double t3_ = 2 * dt;
 
 		gaussMethod(r1_, r2_, r3_, t1_, t2_, t3_);
-
-
-
-		//EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
 
 
 		// Bootstrap the numerical integration,
@@ -644,16 +524,14 @@ void draw_objects(void)
 
 	glPushMatrix();
 
-
 	glPointSize(6.0);
-	glLineWidth(1.0f);
+	glLineWidth(3.0f);
+
 
 
 	glBegin(GL_POINTS);
 
 	glColor3f(1.0, 1.0, 1.0);
-
-
 	glVertex3d(sun_pos.x, sun_pos.y, sun_pos.z);
 
 	//glColor3f(1.0, 0.0, 1.0);
@@ -680,8 +558,6 @@ void draw_objects(void)
 	DrawEllipse(global_ep.centerX, global_ep.centerY, global_ep.semiMinor, global_ep.semiMajor, 100);
 
 	glPopMatrix();
-
-
 
 
 

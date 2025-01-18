@@ -63,49 +63,14 @@ void draw_objects(void);
 const double speed_of_light = 299792458;
 const double grav_constant = 6.673e-11;
 const double sun_mass = 1.989e30;
-const double earth_mass = 5.972e24;
 const double pi = 4.0 * atan(1.0);
-
-double aphelion_distance = 69817079000.0;
-double perihelion_distance = 46e9;
 
 custom_math::vector_3 sun_pos(0, 0, 0);
 
-
-
-
-custom_math::vector_3 mercury_pos(0, -perihelion_distance, 0);
-custom_math::vector_3 mercury_vel(58.97e3, 0, 0);
-
-//custom_math::vector_3 mercury_pos(-perihelion_distance, 0, 0);
-//custom_math::vector_3 mercury_vel(0, -58.97e3, 0);
-
-//custom_math::vector_3 mercury_pos(0, aphelion_distance, 0);
-//custom_math::vector_3 mercury_vel(-38.86e3, 0, 0);
-
-//custom_math::vector_3 mercury_pos(-aphelion_distance, 0, 0);
-//custom_math::vector_3 mercury_vel(0, -38.86e3 * 0.5, 0);
-//
-//custom_math::vector_3 mercury_pos(-aphelion_distance, aphelion_distance, 0);
-//custom_math::vector_3 mercury_vel(0, -38.86e3*0.75, 0);
-
-
-
-
-
-
-//custom_math::vector_3 mercury_vel(-sqrt(grav_constant * sun_mass / aphelion_distance), 0, 0);
-
-vector<custom_math::line_segment> line_segments;
-vector<custom_math::triangle> triangles;
-
-
-
+custom_math::vector_3 orbiter_pos(0, 0, 0);
+custom_math::vector_3 orbiter_vel(0, 0, 0);
 
 vector<custom_math::vector_3> positions;
-
-vector<custom_math::vector_3> ellipse_positions;
-
 
 custom_math::vector_3 background_colour(0.0f, 0.0f, 0.0f);
 custom_math::vector_3 control_list_colour(1.0f, 1.0f, 1.0f);

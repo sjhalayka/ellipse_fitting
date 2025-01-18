@@ -342,8 +342,8 @@ void idle_func(void)
 
 	if (true == calculated_ellipse)
 	{
-		proceed_symplectic4(mercury_pos, mercury_vel, grav_constant, dt);
-		positions.push_back(mercury_pos);
+		proceed_symplectic4(orbiter_pos, orbiter_vel, grav_constant, dt);
+		positions.push_back(orbiter_pos);
 	}
 
 	if (false == calculated_ellipse)
@@ -449,10 +449,10 @@ void idle_func(void)
 
 		// Bootstrap the numerical integration,
 		// to visualy double check the results
-		mercury_pos.x = orbit_points[0].x;
-		mercury_pos.y = orbit_points[0].y;
-		mercury_vel.x = orbit_velocities[0].x;
-		mercury_vel.y = orbit_velocities[0].y;
+		orbiter_pos.x = orbit_points[0].x;
+		orbiter_pos.y = orbit_points[0].y;
+		orbiter_vel.x = orbit_velocities[0].x;
+		orbiter_vel.y = orbit_velocities[0].y;
 	}
 
 	frame_count++;

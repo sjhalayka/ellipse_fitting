@@ -300,118 +300,7 @@ vector<cartesian_point> orbit_points;
 vector<cartesian_point> orbit_velocities;
 
 
-EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
-{
-	double a = coefficients(0);
-	double b = coefficients(1);
-	double c = coefficients(2);
-	double d = coefficients(3);
-	double e = coefficients(4);
-	double f = 0;// coefficients(5);
 
-	// Calculate center
-	double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
-	double centerY = (2 * a * e - b * d) / (b * b - 4 * a * c);
-
-	// Calculate rotation angle
-	double theta = 0.5 * atan2(b, (a - c));
-
-	// Calculate semi-axes
-	double ct = cos(theta);
-	double st = sin(theta);
-	double ct2 = ct * ct;
-	double st2 = st * st;
-	double a2 = a * ct2 + b * ct * st + c * st2;
-	double c2 = a * st2 - b * ct * st + c * ct2;
-
-	// Calculate constants
-	double term = 2 * (a * centerX * centerX + b * centerX * centerY +
-		c * centerY * centerY + d * centerX + e * centerY + f);
-
-	double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
-	double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
-
-	if (a2 > c2) {
-		std::swap(semiMajor, semiMinor);
-		theta += pi / 2;
-	}
-
-	EllipseParameters params;
-	params.centerX = centerX;
-	params.centerY = centerY;
-	params.semiMajor = semiMajor;
-	params.semiMinor = semiMinor;
-	params.angle = theta;
-
-	return params;
-}
-
-
-
-
-
-
-EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const cartesian_point& focus)
-{
-	if (points.size() != 6) {
-		std::cerr << "Error: Exactly 6 points are required.\n";
-		return EllipseParameters();
-	}
-
-	Eigen::MatrixXd A(6, 5);
-	Eigen::VectorXd b(6);
-
-	// Fill the matrix A and vector b with the equations from the points
-	for (size_t i = 0; i < 6; ++i)
-	{
-		double x = points[i].x;
-		double y = points[i].y;
-		A(i, 0) = x*x;       // Coefficient for x^2
-		A(i, 1) = x*y;       // Coefficient for xy
-		A(i, 2) = y*y;       // Coefficient for y^2
-		A(i, 3) = x;           // Coefficient for x
-		A(i, 4) = y;           //  Coefficient for y
-//		A(i, 5) = 1;           // Constant term
-		b(i) = 1;             // Right-hand side is -1. This is important!
-	}
-
-
-	//Eigen::VectorXd ellipseParams = (A.transpose() * A).ldlt().solve(A.transpose() * b);
-
-
-	// Solve for the ellipse parameters
-	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-
-	// Extract parameters
-	//double A_ = ellipseParams(0);
-	//double B_ = ellipseParams(1);
-	//double C_ = ellipseParams(2);
-	//double D_ = ellipseParams(3);
-	//double E_ = ellipseParams(4);
-	//double F_ = ellipseParams(5);
-
-
-
-
-	// Compute center of ellipse
-	EllipseParameters ep = extractEllipseParameters(ellipseParams);
-
-
-	global_ep.angle = ep.angle;
-	global_ep.centerX = ep.centerX;
-	global_ep.centerY = ep.centerY;
-	global_ep.semiMajor = ep.semiMajor;
-	global_ep.semiMinor = ep.semiMinor;
-
-	//cout << global_ep.angle << endl;
-	//cout << global_ep.centerX << endl;
-	//cout << global_ep.centerY << endl;
-	//cout << global_ep.semiMajor << endl;
-	//cout << global_ep.semiMinor << endl;
-
-
-	return ep;
-}
 
 double calculate_orbit_radius(double omega, double omegaDot, double GM) 
 {
@@ -482,6 +371,7 @@ void idle_func(void)
 			// Variable angular velocity
 			const double omega = (measurements[i + 1].azimuth - measurements[i].azimuth) / (measurements[i + 1].timestamp - measurements[i].timestamp);
 
+			// Variable angular acceleration
 			const double d_omega = (omega - prev_omega) / (measurements[i + 1].timestamp - measurements[i].timestamp);
 			prev_omega = omega;
 
@@ -489,6 +379,8 @@ void idle_func(void)
 		}
 
 		// Use the last d_omega element to serve as the constant angular acceleration
+		// We use constant angular acceleration because we only have 3 observations
+		// If we wanted variable angular acceleration, we would need 4 observations instead
 		const double constant_angular_acceleration = d_omega_data[2];
 
 		// Produce 3 radii. The first one isn't actually used,
@@ -533,7 +425,7 @@ void idle_func(void)
 		orbit_velocities.push_back(curr_vel);
 
 		// Calculate (num_points_needed - 1) position and velocity data,
-		// using symplectic integration
+		// using 4th order symplectic integration
 		for (size_t i = 1; i < num_points_needed; i++)
 		{
 			vector_3 curr_pos_3d(curr_pos.x, curr_pos.y, 0);
@@ -556,11 +448,6 @@ void idle_func(void)
 		double t3_ = 2 * dt;
 
 		gauss_method(r1_, r2_, r3_, t1_, t2_, t3_);
-
-		
-		// Needs 5 or 6 points
-		//EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
-
 
 		// Bootstrap the numerical integration,
 		// to visualy double check the results

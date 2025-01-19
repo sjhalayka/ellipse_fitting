@@ -100,9 +100,29 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 // Structure to represent a 3D vector
 class vector_3d {
-
 public:
 	double x, y, z;
+
+	vector_3d operator+(const vector_3d& rhs) const
+	{
+		vector_3d ret;
+		ret.x = x + rhs.x;
+		ret.y = y + rhs.y;
+		ret.z = z + rhs.z;
+
+		return ret;
+	}
+
+	vector_3d operator*(const double& rhs) const
+	{
+		vector_3d ret;
+		ret.x = x * rhs;
+		ret.y = y * rhs;
+		ret.z = z * rhs;
+
+		return ret;
+	}
+
 };
 
 // Function to calculate the magnitude of a vector
@@ -125,20 +145,25 @@ double dotProduct(const vector_3d& v1, const vector_3d& v2) {
 // Function to calculate the orbital elements using Gauss's method
 void gauss_method(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, double t1, double t2, double t3) 
 {
-	// Calculate the velocity vector
-	vector_3d v = { (r3.x - r1.x) / (t3 - t1), (r3.y - r1.y) / (t3 - t1), 0.0 };
+	// Calculate average velocity
+	const vector_3d v21 = { (r2.x - r1.x) / (t2 - t1), (r2.y - r1.y) / (t2 - t1), 0.0 };
+	const vector_3d v32 = { (r3.x - r2.x) / (t3 - t2), (r3.y - r2.y) / (t3 - t2), 0.0 };
+	const vector_3d v_avg = (v21 + v32) * 0.5;
+
+	// Calculate average position
+	const vector_3d r_avg = (r1 + r2 + r3) * (1.0 / 3.0);
 
 	// Calculate the specific angular momentum vector
-	vector_3d h = crossProduct(r2, v);
+	const vector_3d h = crossProduct(r_avg, v_avg);
 
 	// Calculate the semi-major axis
-	double a_orbit = 1.0 / (2.0 / magnitude(r2) - dotProduct(v, v) / (sun_mass * grav_constant));
+	const double a_orbit = 1.0 / (2.0 / magnitude(r_avg) - dotProduct(v_avg, v_avg) / (sun_mass * grav_constant));
 
 	// Calculate the eccentricity
-	double e = sqrt(1.0 - (magnitude(h) * magnitude(h) / ((sun_mass * grav_constant) * a_orbit)));
+	const double e = sqrt(1.0 - (magnitude(h) * magnitude(h) / ((sun_mass * grav_constant) * a_orbit)));
 
 	// Calculate the semi-minor axis
-	double b_orbit = a_orbit * sqrt(1.0 - e * e);
+	const double b_orbit = a_orbit * sqrt(1.0 - e * e);
 
 	// Calculate the center of the ellipse
 	vector_3d center;

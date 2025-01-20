@@ -87,7 +87,7 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 	double c = coefficients(2);
 	double d = coefficients(3);
 	double e = coefficients(4);
-	double f = 1;// coefficients(5);
+	double f = 1;
 
 	// Calculate center
 	double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
@@ -151,7 +151,7 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const c
 		A(i, 3) = x;           // Coefficient for x
 		A(i, 4) = y;           //  Coefficient for y
 //		A(i, 5) = 0;           // Constant term
-		b(i) = 1;             // Right-hand side is -1. This is important!
+		b(i) = 1;             // Right-hand side
 	}
 
 	// Solve for the ellipse parameters
@@ -159,7 +159,6 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const c
 
 	// Compute center of ellipse
 	EllipseParameters ep = extractEllipseParameters(ellipseParams);
-
 
 	global_ep.angle = ep.angle;
 	global_ep.centerX = ep.centerX;
@@ -560,20 +559,20 @@ void idle_func(void)
 		}
 
 		// This needs 3 points
-		//vector_3d r1_ = { orbit_points[0].x, orbit_points[0].y, 0.0 };
-		//vector_3d r2_ = { orbit_points[1].x, orbit_points[1].y, 0.0 };
-		//vector_3d r3_ = { orbit_points[2].x, orbit_points[2].y, 0.0 };
+		vector_3d r1_ = { orbit_points[0].x, orbit_points[0].y, 0.0 };
+		vector_3d r2_ = { orbit_points[1].x, orbit_points[1].y, 0.0 };
+		vector_3d r3_ = { orbit_points[2].x, orbit_points[2].y, 0.0 };
 
-		//double t1_ = 0.0;
-		//double t2_ = dt;
-		//double t3_ = 2 * dt;
+		double t1_ = 0.0;
+		double t2_ = dt;
+		double t3_ = 2 * dt;
 
-		//gauss_method(r1_, r2_, r3_, t1_, t2_, t3_);
-
-
+		gauss_method(r1_, r2_, r3_, t1_, t2_, t3_);
 
 
-		EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
+
+
+		//EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
 
 
 

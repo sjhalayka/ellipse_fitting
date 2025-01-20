@@ -78,6 +78,8 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 
 
+
+
 EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 {
 	double a = coefficients(0);
@@ -127,18 +129,19 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 
 
 
+
 EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const cartesian_point& focus)
 {
-	if (points.size() != 5) {
-		std::cerr << "Error: Exactly 5 points are required.\n";
+	if (points.size() != 6) {
+		std::cerr << "Error: Exactly 6 points are required.\n";
 		return EllipseParameters();
 	}
 
-	Eigen::MatrixXd A(5, 6);
-	Eigen::VectorXd b(5);
+	Eigen::MatrixXd A(6, 5);
+	Eigen::VectorXd b(6);
 
 	// Fill the matrix A and vector b with the equations from the points
-	for (size_t i = 0; i < 5; ++i)
+	for (size_t i = 0; i < 6; ++i)
 	{
 		double x = points[i].x;
 		double y = points[i].y;
@@ -147,8 +150,8 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const c
 		A(i, 2) = y * y;       // Coefficient for y^2
 		A(i, 3) = x;           // Coefficient for x
 		A(i, 4) = y;           //  Coefficient for y
-		A(i, 5) = 1;           // Constant term
-		b(i) = -1;             // Right-hand side is -1. This is important!
+//		A(i, 5) = 0;           // Constant term
+		b(i) = 1;             // Right-hand side is -1. This is important!
 	}
 
 	// Solve for the ellipse parameters
@@ -537,7 +540,7 @@ void idle_func(void)
 		dt = (measurements[2].timestamp - measurements[1].timestamp);
 
 		// Gauss' method uses 3 input points
-		const size_t num_points_needed = 5;
+		const size_t num_points_needed = 6;
 
 		orbit_points.push_back(curr_pos);
 		orbit_velocities.push_back(curr_vel);

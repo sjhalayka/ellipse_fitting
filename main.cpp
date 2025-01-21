@@ -136,18 +136,18 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 
 
 
-EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const cartesian_point& focus)
+EllipseParameters fitEllipse(const std::vector<cartesian_point>& points)
 {
-	if (points.size() < 6 ) {
-		std::cerr << "Error: Minimum 6 points are required.\n";
+	if (points.size() != 5 ) {
+		std::cerr << "Error: 5 points are required.\n";
 		return EllipseParameters();
 	}
 
-	Eigen::MatrixXd A(6, 5);
-	Eigen::VectorXd b(6);
+	Eigen::MatrixXd A(5, 5);
+	Eigen::VectorXd b(5);
 
 	// Fill the matrix A and vector b with the equations from the points
-	for (size_t i = 0; i < 6; ++i)
+	for (size_t i = 0; i < 5; ++i)
 	{
 		double x = points[i].x;
 		double y = points[i].y;
@@ -176,11 +176,11 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const c
 	global_ep.semiMajor = ep.semiMajor;
 	global_ep.semiMinor = ep.semiMinor;
 
-	//if (1)//global_ep.semiMajor < global_ep.semiMinor)
-	//{
+	if (1)//global_ep.semiMajor < global_ep.semiMinor)
+	{
 		std::swap(global_ep.semiMajor, global_ep.semiMinor);
 	//global_ep.angle += pi / 2;
-	//}
+	}
 
 	return ep;
 }
@@ -545,7 +545,7 @@ void idle_func(void)
 		dt = (measurements[2].timestamp - measurements[1].timestamp);
 
 		// Gauss' method uses 3 input points
-		const size_t num_points_needed = 6;
+		const size_t num_points_needed = 5;
 
 		orbit_points.push_back(curr_pos);
 		orbit_velocities.push_back(curr_vel);
@@ -578,7 +578,7 @@ void idle_func(void)
 
 
 
-		EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
+		EllipseParameters ep = fitEllipse(orbit_points);
 
 	
 

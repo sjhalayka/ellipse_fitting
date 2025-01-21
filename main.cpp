@@ -77,19 +77,20 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 
 EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
-{/*
-	A(i, 0) = x;
-	A(i, 1) = y;
-	A(i, 2) = x * x;
-	A(i, 3) = x * y;
-	A(i, 4) = y * y;*/
+{
+	//A(i, 0) = x * x;
+	//A(i, 1) = 0;// x* y;
+	//A(i, 2) = x * x;
+	//A(i, 3) = 0;// x;
+	//A(i, 4) = y;
 
-	double a = coefficients(2);
-	double b = coefficients(3);
-	double c = coefficients(4);
-	double d = coefficients(0);
-	double e = coefficients(1);
+	double a = coefficients(0);
+	double b = coefficients(1);
+	double c = coefficients(2);
+	double d = coefficients(3);
+	double e = coefficients(4);
 	double f = 1;
+
 
 	// Calculate center
 	double centerX = (2 * c * d - b * e) / (b * b - 4 * a * c);
@@ -151,14 +152,14 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const c
 		double x = points[i].x;
 		double y = points[i].y;
 
-		A(i, 0) = 0;// x;
-		A(i, 1) = y;
-		A(i, 2) = x * x;
-		A(i, 3) = 0;// x* y;
-		A(i, 4) = y * y;
+		A(i, 0) = x * x;
+		A(i, 1) = 0; // No rotation on x*y
+		A(i, 2) = y * y;
+		A(i, 3) = 0; // No translation on x
+		A(i, 4) = y;
+
 		b(i) = -1;
 	}
-
 
 	// Solve for the ellipse parameters
 	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(b);
@@ -172,17 +173,14 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const c
 	global_ep.centerX = ep.centerX;
 	global_ep.centerY = ep.centerY;
 
-	if (ep.semiMajor >= ep.semiMinor)
-	{
-		global_ep.semiMajor = ep.semiMinor;
-		global_ep.semiMinor = ep.semiMajor;
-	}
-	else
-	{
-		global_ep.semiMajor = ep.semiMajor;
-		global_ep.semiMinor = ep.semiMinor;
-	}
+	global_ep.semiMajor = ep.semiMajor;
+	global_ep.semiMinor = ep.semiMinor;
 
+	//if (1)//global_ep.semiMajor < global_ep.semiMinor)
+	//{
+		std::swap(global_ep.semiMajor, global_ep.semiMinor);
+	//global_ep.angle += pi / 2;
+	//}
 
 	return ep;
 }

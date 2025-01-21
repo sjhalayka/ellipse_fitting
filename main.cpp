@@ -76,17 +76,19 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 }
 
 
-
-
-
-
 EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
-{
-	double a = coefficients(0);
-	double b = coefficients(1);
-	double c = coefficients(2);
-	double d = coefficients(3);
-	double e = coefficients(4);
+{/*
+	A(i, 0) = x;
+	A(i, 1) = y;
+	A(i, 2) = x * x;
+	A(i, 3) = x * y;
+	A(i, 4) = y * y;*/
+
+	double a = coefficients(2);
+	double b = coefficients(3);
+	double c = coefficients(4);
+	double d = coefficients(0);
+	double e = coefficients(1);
 	double f = 1;
 
 	// Calculate center
@@ -111,7 +113,9 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 	double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
 	double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
 
-	if (a2 > c2) {
+	if (a2 > c2) 
+	{
+		cout << "Rotating ellipse" << endl;
 		std::swap(semiMajor, semiMinor);
 		theta += pi / 2;
 	}
@@ -130,10 +134,11 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 
 
 
+
 EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const cartesian_point& focus)
 {
-	if (points.size() != 6) {
-		std::cerr << "Error: Exactly 6 points are required.\n";
+	if (points.size() < 6 ) {
+		std::cerr << "Error: Minimum 6 points are required.\n";
 		return EllipseParameters();
 	}
 
@@ -145,39 +150,42 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points, const c
 	{
 		double x = points[i].x;
 		double y = points[i].y;
-		A(i, 0) = x * x;       // Coefficient for x^2
-		A(i, 1) = x * y;       // Coefficient for xy
-		A(i, 2) = y * y;       // Coefficient for y^2
-		A(i, 3) = x;           // Coefficient for x
-		A(i, 4) = y;           //  Coefficient for y
-//		A(i, 5) = 0;           // Constant term
-		b(i) = 1;             // Right-hand side
+
+		A(i, 0) = 0;// x;
+		A(i, 1) = y;
+		A(i, 2) = x * x;
+		A(i, 3) = 0;// x* y;
+		A(i, 4) = y * y;
+		b(i) = -1;
 	}
 
+
 	// Solve for the ellipse parameters
-	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(b);
+
 
 	// Compute center of ellipse
 	EllipseParameters ep = extractEllipseParameters(ellipseParams);
 
+
 	global_ep.angle = ep.angle;
 	global_ep.centerX = ep.centerX;
 	global_ep.centerY = ep.centerY;
-	global_ep.semiMajor = ep.semiMajor;
-	global_ep.semiMinor = ep.semiMinor;
 
-	//cout << global_ep.angle << endl;
-	//cout << global_ep.centerX << endl;
-	//cout << global_ep.centerY << endl;
-	//cout << global_ep.semiMajor << endl;
-	//cout << global_ep.semiMinor << endl;
+	if (ep.semiMajor >= ep.semiMinor)
+	{
+		global_ep.semiMajor = ep.semiMinor;
+		global_ep.semiMinor = ep.semiMajor;
+	}
+	else
+	{
+		global_ep.semiMajor = ep.semiMajor;
+		global_ep.semiMinor = ep.semiMinor;
+	}
+
 
 	return ep;
 }
-
-
-
-
 
 
 
@@ -567,13 +575,14 @@ void idle_func(void)
 		double t2_ = dt;
 		double t3_ = 2 * dt;
 
-		gauss_method(r1_, r2_, r3_, t1_, t2_, t3_);
+		//gauss_method(r1_, r2_, r3_, t1_, t2_, t3_);
 
 
 
 
-		//EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
+		EllipseParameters ep = fitEllipse(orbit_points, cartesian_point(0, 0));
 
+	
 
 
 
@@ -682,7 +691,7 @@ void draw_objects(void)
 	glColor3f(1.0, 0.5, 0.0);
 
 	glTranslated(global_ep.centerX, global_ep.centerY, 0);
-	glRotated(global_ep.angle / (2 * pi) * 360.0, 0, 0, 1);
+	glRotated((global_ep.angle) * (2 * pi) * 360.0, 0, 0, 1);
 	glTranslated(-global_ep.centerX, -global_ep.centerY, 0);
 
 	DrawEllipse(global_ep.centerX, global_ep.centerY, global_ep.semiMinor, global_ep.semiMajor, 100);

@@ -76,6 +76,39 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 }
 
 
+
+
+
+
+
+// Function to calculate the determinant of a 3x3 matrix
+double determinant(const Matrix3d& m)
+{
+	return m.determinant();
+}
+
+// Function to replace a column in a matrix
+Matrix3d replaceColumn(
+	const Matrix3d &m,
+	const Vector3d& vector, 
+	int col)
+{
+	Matrix3d replacedMatrix = m;
+	
+	for (size_t i = 0; i < 3; i++)
+		replacedMatrix(i, col) = vector(i);
+
+	return replacedMatrix;
+}
+
+
+
+
+
+
+
+
+
 EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 {
 	//A(i, 0) = x * x;
@@ -124,7 +157,7 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 	EllipseParameters params;
 	params.centerX = centerX;
 	params.centerY = centerY;
-	params.semiMajor = semiMinor;
+	params.semiMajor = semiMinor; // swapped
 	params.semiMinor = semiMajor;
 	params.angle = theta;
 
@@ -161,6 +194,33 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points)
 
 	// Solve for the ellipse parameters
 	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(b);
+
+
+	cout << ellipseParams << endl << endl;
+
+
+	double detMatrix = determinant(A);
+
+	if (detMatrix == 0)
+		cout << "no determinant" << endl;
+	else
+	{
+
+		double detMatrixX = determinant(replaceColumn(A, b, 0));
+		double detMatrixY = determinant(replaceColumn(A, b, 1));
+		double detMatrixZ = determinant(replaceColumn(A, b, 2));
+
+		double x = detMatrixX / detMatrix;
+		double y = detMatrixY / detMatrix;
+		double z = detMatrixZ / detMatrix;
+
+		std::cout << "Solution:" << std::endl;
+		std::cout << "x = " << x << std::endl;
+		std::cout << "y = " << y << std::endl;
+		std::cout << "z = " << z << std::endl;
+
+	}
+
 
 
 	// Compute center of ellipse

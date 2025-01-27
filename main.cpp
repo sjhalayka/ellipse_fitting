@@ -84,11 +84,30 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 // Function to calculate the determinant of a 3x3 matrix
 double determinant(const Matrix3d& m)
 {
-	return m.determinant();
+	// https://textbooks.math.gatech.edu/ila/determinants-volumes.html
+	// https://copilot.microsoft.com/chats/qQxM5K1jer1Dc6pMtuDfD
+
+	Vector3d a;
+	a(0) = m(0, 0);
+	a(1) = m(0, 1);
+	a(2) = m(0, 2);
+
+	Vector3d b;
+	b(0) = m(1, 0);
+	b(1) = m(1, 1);
+	b(2) = m(1, 2);
+
+	Vector3d c;
+	c(0) = m(2, 0);
+	c(1) = m(2, 1);
+	c(2) = m(2, 2);
+
+	Vector3d cross = b.cross(c);
+	return a.dot(cross);
 }
 
 // Function to replace a column in a matrix
-Matrix3d replaceColumn(
+Matrix3d replace_column(
 	const Matrix3d &m,
 	const Vector3d& vector, 
 	int col)
@@ -206,9 +225,9 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points)
 	else
 	{
 
-		double detMatrixX = determinant(replaceColumn(A, b, 0));
-		double detMatrixY = determinant(replaceColumn(A, b, 1));
-		double detMatrixZ = determinant(replaceColumn(A, b, 2));
+		double detMatrixX = determinant(replace_column(A, b, 0));
+		double detMatrixY = determinant(replace_column(A, b, 1));
+		double detMatrixZ = determinant(replace_column(A, b, 2));
 
 		double x = detMatrixX / detMatrix;
 		double y = detMatrixY / detMatrix;

@@ -76,6 +76,8 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 }
 
 
+
+// https://claude.ai/chat/3caf4077-28b5-497f-b704-1b0c336a104d
 template<size_t N>
 class Vector_nD 
 {
@@ -86,13 +88,10 @@ public:
 	static int permutationSign(const std::array<int, (N - 1) > &perm) 
 	{
 		int inversions = 0;
+
 		for (int i = 0; i < (N - 2); i++) 
-		{
 			for (int j = i + 1; j < (N - 1); j++) 
-			{
 				if (perm[i] > perm[j]) inversions++;
-			}
-		}
 
 		return (inversions % 2 == 0) ? 1 : -1;
 	}
@@ -115,9 +114,7 @@ public:
 	static Vector_nD cross_product(const std::vector<Vector_nD<N>>& vectors)
 	{
 		if (vectors.size() != (N - 1))
-		{
 			throw std::invalid_argument("nD cross product requires exactly (n - 1) vectors");
-		}
 
 		std::array<double, N> result;// = { 0, 0, 0, 0, 0, 0, 0 };
 
@@ -127,29 +124,34 @@ public:
 		// These are the indices we'll use for each component calculation
 		std::array<int, (N - 1)> baseIndices;// = { 0, 1, 2, 3, 4, 5 };
 
-		for (int i = 0; i < N - 1; i++)
+		for (int i = 0; i < (N - 1); i++)
 			baseIndices[i] = i;
 
 		// For each component of the result vector
-		for (int k = 0; k < N; k++) {
+		for (int k = 0; k < N; k++)
+		{
 			// Skip k in our calculations - this is equivalent to removing the k-th column
 			// For each permutation of the remaining 6 indices
-			do {
+			do
+			{
 				// Calculate sign of this term
-				int sign = permutationSign(baseIndices);
+				const int sign = permutationSign(baseIndices);
 
 				// Calculate the product for this permutation
 				double product = 1.0;
-				for (int i = 0; i < (N - 1); i++) {
-					int col = baseIndices[i];
+
+				for (int i = 0; i < (N - 1); i++)
+				{
+					const int col = baseIndices[i];
 					// Adjust column index if it's past k
-					int actualCol = (col >= k) ? col + 1 : col;
+					const int actualCol = (col >= k) ? col + 1 : col;
 					product *= vectors[i][actualCol];
 				}
 
 				result[k] += sign * product;
 
-			} while (std::next_permutation(baseIndices.begin(), baseIndices.end()));
+			} 
+			while (std::next_permutation(baseIndices.begin(), baseIndices.end()));
 
 			// Reset indices for next component
 			for (int i = 0; i < N - 1; i++)
@@ -164,7 +166,7 @@ public:
 		double dot_prod = 0;
 
 		for (size_t i = 0; i < N; i++)
-			dot_prod += a[i]*b[i];
+			dot_prod += a[i] * b[i];
 
 		return dot_prod;
 	}

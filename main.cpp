@@ -82,7 +82,7 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 
 // Function to calculate the determinant of a 3x3 matrix
-double determinant(const Matrix3d& m)
+double determinant3x3(const Matrix3d& m)
 {
 	// https://textbooks.math.gatech.edu/ila/determinants-volumes.html
 	// https://copilot.microsoft.com/chats/qQxM5K1jer1Dc6pMtuDfD
@@ -108,27 +108,19 @@ double determinant(const Matrix3d& m)
 
 // Function to replace a column in a matrix
 Matrix3d replace_column(
-	const Matrix3d &m,
-	const Vector3d& vector, 
+	const Matrix3d& m,
+	const Vector3d& vector,
 	int col)
 {
 	Matrix3d replacedMatrix = m;
-	
+
 	for (size_t i = 0; i < 3; i++)
 		replacedMatrix(i, col) = vector(i);
 
 	return replacedMatrix;
 }
 
-
-
-
-
-
-
-
-
-EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
+EllipseParameters extract_ellipse_parameters3x3(const Eigen::VectorXd& coefficients)
 {
 	//A(i, 0) = x * x;
 	//A(i, 1) = 0;// x* y;
@@ -166,7 +158,7 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 	double semiMajor = sqrt(abs(term / (2 * std::min(a2, c2))));
 	double semiMinor = sqrt(abs(term / (2 * std::max(a2, c2))));
 
-	if (a2 > c2) 
+	if (a2 > c2)
 	{
 		cout << "Rotating ellipse" << endl;
 		std::swap(semiMajor, semiMinor);
@@ -188,9 +180,9 @@ EllipseParameters extractEllipseParameters(const Eigen::VectorXd& coefficients)
 
 
 
-EllipseParameters fitEllipse(const std::vector<cartesian_point>& points)
+EllipseParameters fit_ellipse3x3(const std::vector<cartesian_point>& points)
 {
-	if (points.size() != 3 ) {
+	if (points.size() != 3) {
 		std::cerr << "Error: 3 points are required.\n";
 		return EllipseParameters();
 	}
@@ -212,22 +204,16 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points)
 	}
 
 	// Solve for the ellipse parameters
-	Eigen::VectorXd ellipseParams = A.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(b);
-
-
-	cout << ellipseParams << endl << endl;
-
-
-	double detMatrix = determinant(A);
+	double detMatrix = determinant3x3(A);
+	EllipseParameters ep;
 
 	if (detMatrix == 0)
 		cout << "no determinant" << endl;
 	else
 	{
-
-		double detMatrixX = determinant(replace_column(A, b, 0));
-		double detMatrixY = determinant(replace_column(A, b, 1));
-		double detMatrixZ = determinant(replace_column(A, b, 2));
+		double detMatrixX = determinant3x3(replace_column(A, b, 0));
+		double detMatrixY = determinant3x3(replace_column(A, b, 1));
+		double detMatrixZ = determinant3x3(replace_column(A, b, 2));
 
 		double x = detMatrixX / detMatrix;
 		double y = detMatrixY / detMatrix;
@@ -238,16 +224,13 @@ EllipseParameters fitEllipse(const std::vector<cartesian_point>& points)
 		std::cout << "y = " << y << std::endl;
 		std::cout << "z = " << z << std::endl;
 
+		Eigen::Vector3d ellipse_coefficients;
+		ellipse_coefficients(0) = x;
+		ellipse_coefficients(1) = y;
+		ellipse_coefficients(2) = z;
+
+		ep = extract_ellipse_parameters3x3(ellipse_coefficients);
 	}
-
-
-
-	// Compute center of ellipse
-	EllipseParameters ep = extractEllipseParameters(ellipseParams);
-
-
-
-
 
 	global_ep.angle = ep.angle;
 	global_ep.centerX = ep.centerX;
@@ -317,7 +300,7 @@ double dotProduct(const vector_3d& v1, const vector_3d& v2) {
 }
 
 // Function to calculate the orbital elements using Gauss's method
-void gauss_method(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, double t1, double t2, double t3) 
+void gauss_method(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3, double t1, double t2, double t3)
 {
 	// Calculate average velocity
 	const vector_3d v21 = { (r2.x - r1.x) / (t2 - t1), (r2.y - r1.y) / (t2 - t1), 0.0 };
@@ -331,15 +314,15 @@ void gauss_method(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3,
 	const vector_3d h = crossProduct(r_avg, v_avg);
 
 	// Calculate the semi-major axis
-	 double a_orbit = 1.0 / (2.0 / magnitude(r_avg) - dotProduct(v_avg, v_avg) / (sun_mass * grav_constant));
+	double a_orbit = 1.0 / (2.0 / magnitude(r_avg) - dotProduct(v_avg, v_avg) / (sun_mass * grav_constant));
 
 	// Calculate the eccentricity
 	const double e = sqrt(1.0 - (magnitude(h) * magnitude(h) / ((sun_mass * grav_constant) * a_orbit)));
 
 	// Calculate the semi-minor axis
-	 double b_orbit = a_orbit * sqrt(1.0 - e * e);
+	double b_orbit = a_orbit * sqrt(1.0 - e * e);
 
-	
+
 
 	// Calculate the center of the ellipse
 	vector_3d center;
@@ -350,7 +333,7 @@ void gauss_method(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3,
 
 	if (dx < 0)
 	{
-//		swap(a_orbit, b_orbit);
+		//		swap(a_orbit, b_orbit);
 		center.y = -a_orbit * e;
 	}
 	else
@@ -370,7 +353,7 @@ void gauss_method(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3,
 int main(int argc, char** argv)
 {
 	cout << std::scientific << endl;
-//	cout << setprecision(20) << endl;
+	//	cout << setprecision(20) << endl;
 
 	glutInit(&argc, argv);
 	init_opengl(win_x, win_y);
@@ -509,7 +492,7 @@ vector<cartesian_point> orbit_velocities;
 
 
 
-double calculate_orbit_radius(double omega, double omegaDot, double GM) 
+double calculate_orbit_radius(double omega, double omegaDot, double GM)
 {
 	// Check for valid angular velocity
 	if (omega <= 0)
@@ -592,7 +575,7 @@ void idle_func(void)
 
 		// Produce 3 radii. The first one isn't actually used,
 		// so just use a quick dummy value of zero
-		vector<double> radii_data;		
+		vector<double> radii_data;
 		radii_data.push_back(0);
 
 		for (size_t i = 0; i < measurements.size() - 1; i++)
@@ -660,7 +643,10 @@ void idle_func(void)
 
 
 
-		EllipseParameters ep = fitEllipse(orbit_points);
+		EllipseParameters ep = fit_ellipse3x3(orbit_points);
+
+
+
 
 
 		// Bootstrap the numerical integration,

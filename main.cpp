@@ -594,7 +594,7 @@ int main(int argc, char** argv)
 	cout << std::scientific << endl;
 	//	cout << setprecision(20) << endl;
 
-	const size_t N = 5;
+	const size_t N = 10;
 
 	MatrixXd m(N, N);
 

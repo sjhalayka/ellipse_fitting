@@ -203,6 +203,12 @@ EllipseParameters fit_ellipse3x3(const std::vector<cartesian_point>& points)
 		b(i) = -1;
 	}
 
+	Eigen::VectorXd ellipse_coefficients_Jacobi = A.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(b);
+
+	cout << ellipse_coefficients_Jacobi << endl;
+
+
+
 	// Solve for the ellipse parameters
 	double detMatrix = determinant3x3(A);
 	EllipseParameters ep;

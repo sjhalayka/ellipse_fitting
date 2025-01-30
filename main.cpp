@@ -76,8 +76,105 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 }
 
 
+template<size_t N>
+class Vector_nD 
+{
+public:
+	std::array<double, N> components;
+
+	// Helper function to get the sign of permutation
+	static int permutationSign(const std::array<int, (N - 1) > &perm) 
+	{
+		int inversions = 0;
+		for (int i = 0; i < (N - 2); i++) 
+		{
+			for (int j = i + 1; j < (N - 1); j++) 
+			{
+				if (perm[i] > perm[j]) inversions++;
+			}
+		}
+
+		return (inversions % 2 == 0) ? 1 : -1;
+	}
+
+public:
+	Vector_nD(const std::array<double, N>& comps) : components(comps) {}
+
+	Vector_nD(void) { }
 
 
+	double operator[](size_t index) const {
+		if (index >= N) throw std::out_of_range("Index out of bounds");
+		return components[index];
+	}
+
+	static Vector_nD cross_product(const std::vector<Vector_nD<N>>& vectors)
+	{
+		if (vectors.size() != (N - 1))
+		{
+			throw std::invalid_argument("nD cross product requires exactly (n - 1) vectors");
+		}
+
+		std::array<double, N> result;// = { 0, 0, 0, 0, 0, 0, 0 };
+
+		for (size_t i = 0; i < N; i++)
+			result[i] = 0.0;
+
+		// These are the indices we'll use for each component calculation
+		std::array<int, (N - 1)> baseIndices;// = { 0, 1, 2, 3, 4, 5 };
+
+		for (int i = 0; i < N - 1; i++)
+			baseIndices[i] = i;
+
+		// For each component of the result vector
+		for (int k = 0; k < N; k++) {
+			// Skip k in our calculations - this is equivalent to removing the k-th column
+			// For each permutation of the remaining 6 indices
+			do {
+				// Calculate sign of this term
+				int sign = permutationSign(baseIndices);
+
+				// Calculate the product for this permutation
+				double product = 1.0;
+				for (int i = 0; i < (N - 1); i++) {
+					int col = baseIndices[i];
+					// Adjust column index if it's past k
+					int actualCol = (col >= k) ? col + 1 : col;
+					product *= vectors[i][actualCol];
+				}
+
+				result[k] += sign * product;
+
+			} while (std::next_permutation(baseIndices.begin(), baseIndices.end()));
+
+			// Reset indices for next component
+			for (int i = 0; i < N - 1; i++)
+				baseIndices[i] = i;
+		}
+
+		return Vector_nD(result);
+	}
+
+	static double dot_product(const Vector_nD<N>& a, const Vector_nD<N>&b)
+	{
+		double dot_prod = 0;
+
+		for (size_t i = 0; i < N; i++)
+			dot_prod += a[i]*b[i];
+
+		return dot_prod;
+	}
+
+	// Method to print vector (for debugging)
+	void print() const {
+		std::cout << "(";
+		for (int i = 0; i < N; i++) {
+			std::cout << components[i];
+			if (i < (N - 1)) std::cout << ", ";
+		}
+		std::cout << ")" << std::endl;
+	}
+};
 
 
 
@@ -102,9 +199,143 @@ double determinant3x3(const Matrix3d& m)
 	c(1) = m(2, 1);
 	c(2) = m(2, 2);
 
+	const size_t N = 3;
+
+	Vector_nD<N> a_nd({ a(0), a(1), a(2) });
+	Vector_nD<N> b_nd({ b(0), b(1), b(2) });
+	Vector_nD<N> c_nd({ c(0), c(1), c(2) });
+
+	std::vector<Vector_nD<N>> vectors = {
+		Vector_nD<N>(b_nd), Vector_nD<N>(c_nd)
+	};
+
+	// Compute the cross product
+	Vector_nD<N> result = Vector_nD<N>::cross_product(vectors);
+
+	for (size_t i = 0; i < result.components.size(); i++)
+	{
+		if(i % 2 == 1)
+		result.components[i] = -result.components[i];
+	}
+	
+	//	result.print();
+
+	double d_ = Vector_nD<N>::dot_product(a_nd, result);
+
+	cout << d_ << endl;
+
 	Vector3d cross = b.cross(c);
-	return a.dot(cross);
+
+//	cout << cross(0) << " " << cross(1) << " " << cross(2) << endl << endl;
+	double d = a.dot(cross);
+
+	cout << d << endl << endl;
+
+	return d;
 }
+
+
+double determinant4x4(const Matrix4d& m)
+{
+	Vector4d a_;
+	a_(0) = m(0, 0);
+	a_(1) = m(0, 1);
+	a_(2) = m(0, 2);
+	a_(3) = m(0, 3);
+
+	Vector4d b_;
+	b_(0) = m(1, 0);
+	b_(1) = m(1, 1);
+	b_(2) = m(1, 2);
+	b_(3) = m(1, 3);
+
+	Vector4d c_;
+	c_(0) = m(2, 0);
+	c_(1) = m(2, 1);
+	c_(2) = m(2, 2);
+	c_(3) = m(2, 3);
+
+	Vector4d d_;
+	d_(0) = m(3, 0);
+	d_(1) = m(3, 1);
+	d_(2) = m(3, 2);
+	d_(3) = m(3, 3);
+
+
+	const size_t N = 4;
+
+	Vector_nD<N> a_nd({ a_(0), a_(1), a_(2), a_(3)});
+	Vector_nD<N> b_nd({ b_(0), b_(1), b_(2), b_(3) });
+	Vector_nD<N> c_nd({ c_(0), c_(1), c_(2), c_(3) });
+	Vector_nD<N> d_nd({ d_(0), d_(1), d_(2), d_(3) });
+
+	std::vector<Vector_nD<N>> vectors = {
+		Vector_nD<N>(b_nd), Vector_nD<N>(c_nd), Vector_nD<N>(d_nd)
+	};
+
+	// Compute the cross product
+	Vector_nD<N> result = Vector_nD<N>::cross_product(vectors);
+
+	for (size_t i = 0; i < result.components.size(); i++)
+	{
+		if (i % 2 == 1)
+			result.components[i] = -result.components[i];
+	}
+
+	double d_dot = Vector_nD<N>::dot_product(a_nd, result);
+	cout << d_dot << endl;
+
+	cout << m.determinant() << endl << endl;
+
+
+	return d_dot;
+}
+
+
+template <typename size_t N>
+double determinant_nxn(const MatrixXd& m)
+{
+	if (m.cols() != m.rows())
+	{
+		cout << "Matrix must be " << N << "x" << N << endl;
+		return 0;
+	}
+
+	Vector_nD<N> a_nd;
+	
+	for (size_t i = 0; i < N; i++)
+		a_nd.components[i] = m(0, i);
+
+	std::vector<Vector_nD<N>> vectors;
+
+	for (size_t i = 1; i < N; i++)
+	{
+		Vector_nD<N> non;
+
+		for (size_t j = 0; j < N; j++)
+			non.components[j] = m(i, j);
+
+		vectors.push_back(non);
+	}
+
+	// Compute the cross product
+	Vector_nD<N> result = Vector_nD<N>::cross_product(vectors);
+
+	for (size_t i = 0; i < result.components.size(); i++)
+		if (i % 2 == 1)
+			result.components[i] = -result.components[i];
+
+	double d_dot = Vector_nD<N>::dot_product(a_nd, result);
+	
+	cout << d_dot << endl;
+	cout << m.determinant() << endl << endl;
+
+	return d_dot;
+}
+
+
+
+
 
 // Function to replace a column in a matrix
 Matrix3d replace_column(
@@ -205,7 +436,7 @@ EllipseParameters fit_ellipse3x3(const std::vector<cartesian_point>& points)
 
 	Eigen::VectorXd ellipse_coefficients_Jacobi = A.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(b);
 
-	cout << ellipse_coefficients_Jacobi << endl;
+	//cout << ellipse_coefficients_Jacobi << endl;
 
 
 
@@ -214,26 +445,28 @@ EllipseParameters fit_ellipse3x3(const std::vector<cartesian_point>& points)
 	EllipseParameters ep;
 
 	if (detMatrix == 0)
+	{
 		cout << "no determinant" << endl;
+	}
 	else
 	{
-		double detMatrixX = determinant3x3(replace_column(A, b, 0));
-		double detMatrixY = determinant3x3(replace_column(A, b, 1));
-		double detMatrixZ = determinant3x3(replace_column(A, b, 2));
+		double detMatrixa = determinant3x3(replace_column(A, b, 0));
+		double detMatrixc = determinant3x3(replace_column(A, b, 1));
+		double detMatrixe = determinant3x3(replace_column(A, b, 2));
 
-		double x = detMatrixX / detMatrix;
-		double y = detMatrixY / detMatrix;
-		double z = detMatrixZ / detMatrix;
+		double a = detMatrixa / detMatrix;
+		double c = detMatrixc / detMatrix;
+		double e = detMatrixe / detMatrix;
 
-		std::cout << "Solution:" << std::endl;
-		std::cout << "x = " << x << std::endl;
-		std::cout << "y = " << y << std::endl;
-		std::cout << "z = " << z << std::endl;
+		//std::cout << "Solution:" << std::endl;
+		//std::cout << "a = " << a << std::endl;
+		//std::cout << "c = " << c << std::endl;
+		//std::cout << "e = " << e << std::endl;
 
 		Eigen::Vector3d ellipse_coefficients;
-		ellipse_coefficients(0) = x;
-		ellipse_coefficients(1) = y;
-		ellipse_coefficients(2) = z;
+		ellipse_coefficients(0) = a;
+		ellipse_coefficients(1) = c;
+		ellipse_coefficients(2) = e;
 
 		ep = extract_ellipse_parameters3x3(ellipse_coefficients);
 	}
@@ -360,6 +593,18 @@ int main(int argc, char** argv)
 {
 	cout << std::scientific << endl;
 	//	cout << setprecision(20) << endl;
+
+	const size_t N = 5;
+
+	MatrixXd m(N, N);
+
+	for (size_t i = 0; i < N; i++)
+		for (size_t j = 0; j < N; j++)
+			m(i, j) = static_cast<double>(rand());
+
+	determinant_nxn<N>(m);
+
+	return 0;
 
 	glutInit(&argc, argv);
 	init_opengl(win_x, win_y);

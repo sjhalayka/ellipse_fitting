@@ -297,7 +297,7 @@ double determinant_nxn(const MatrixXd& m)
 {
 	if (m.cols() != m.rows())
 	{
-		cout << "Matrix must be " << N << "x" << N << endl;
+		cout << "Matrix must be square" << endl;
 		return 0;
 	}
 
@@ -594,17 +594,17 @@ int main(int argc, char** argv)
 	cout << std::scientific << endl;
 	//	cout << setprecision(20) << endl;
 
-	const size_t N = 10;
+	//const size_t N = 10;
 
-	MatrixXd m(N, N);
+	//MatrixXd m(N, N);
 
-	for (size_t i = 0; i < N; i++)
-		for (size_t j = 0; j < N; j++)
-			m(i, j) = static_cast<double>(rand());
+	//for (size_t i = 0; i < N; i++)
+	//	for (size_t j = 0; j < N; j++)
+	//		m(i, j) = static_cast<double>(rand());
 
-	determinant_nxn<N>(m);
+	//determinant_nxn<N>(m);
 
-	return 0;
+	//return 0;
 
 	glutInit(&argc, argv);
 	init_opengl(win_x, win_y);

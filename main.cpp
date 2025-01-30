@@ -100,7 +100,11 @@ public:
 public:
 	Vector_nD(const std::array<double, N>& comps) : components(comps) {}
 
-	Vector_nD(void) { }
+	Vector_nD(void) 
+	{
+		for (size_t i = 0; i < N; i++)
+			components[i] = 0;
+	}
 
 
 	double operator[](size_t index) const {
@@ -177,121 +181,6 @@ public:
 };
 
 
-
-// Function to calculate the determinant of a 3x3 matrix
-double determinant3x3(const Matrix3d& m)
-{
-	// https://textbooks.math.gatech.edu/ila/determinants-volumes.html
-	// https://copilot.microsoft.com/chats/qQxM5K1jer1Dc6pMtuDfD
-
-	Vector3d a;
-	a(0) = m(0, 0);
-	a(1) = m(0, 1);
-	a(2) = m(0, 2);
-
-	Vector3d b;
-	b(0) = m(1, 0);
-	b(1) = m(1, 1);
-	b(2) = m(1, 2);
-
-	Vector3d c;
-	c(0) = m(2, 0);
-	c(1) = m(2, 1);
-	c(2) = m(2, 2);
-
-	const size_t N = 3;
-
-	Vector_nD<N> a_nd({ a(0), a(1), a(2) });
-	Vector_nD<N> b_nd({ b(0), b(1), b(2) });
-	Vector_nD<N> c_nd({ c(0), c(1), c(2) });
-
-	std::vector<Vector_nD<N>> vectors = {
-		Vector_nD<N>(b_nd), Vector_nD<N>(c_nd)
-	};
-
-	// Compute the cross product
-	Vector_nD<N> result = Vector_nD<N>::cross_product(vectors);
-
-	for (size_t i = 0; i < result.components.size(); i++)
-	{
-		if(i % 2 == 1)
-		result.components[i] = -result.components[i];
-	}
-	
-	//	result.print();
-
-	double d_ = Vector_nD<N>::dot_product(a_nd, result);
-
-	cout << d_ << endl;
-
-	Vector3d cross = b.cross(c);
-
-//	cout << cross(0) << " " << cross(1) << " " << cross(2) << endl << endl;
-	double d = a.dot(cross);
-
-	cout << d << endl << endl;
-
-	return d;
-}
-
-
-double determinant4x4(const Matrix4d& m)
-{
-	Vector4d a_;
-	a_(0) = m(0, 0);
-	a_(1) = m(0, 1);
-	a_(2) = m(0, 2);
-	a_(3) = m(0, 3);
-
-	Vector4d b_;
-	b_(0) = m(1, 0);
-	b_(1) = m(1, 1);
-	b_(2) = m(1, 2);
-	b_(3) = m(1, 3);
-
-	Vector4d c_;
-	c_(0) = m(2, 0);
-	c_(1) = m(2, 1);
-	c_(2) = m(2, 2);
-	c_(3) = m(2, 3);
-
-	Vector4d d_;
-	d_(0) = m(3, 0);
-	d_(1) = m(3, 1);
-	d_(2) = m(3, 2);
-	d_(3) = m(3, 3);
-
-
-	const size_t N = 4;
-
-	Vector_nD<N> a_nd({ a_(0), a_(1), a_(2), a_(3)});
-	Vector_nD<N> b_nd({ b_(0), b_(1), b_(2), b_(3) });
-	Vector_nD<N> c_nd({ c_(0), c_(1), c_(2), c_(3) });
-	Vector_nD<N> d_nd({ d_(0), d_(1), d_(2), d_(3) });
-
-	std::vector<Vector_nD<N>> vectors = {
-		Vector_nD<N>(b_nd), Vector_nD<N>(c_nd), Vector_nD<N>(d_nd)
-	};
-
-	// Compute the cross product
-	Vector_nD<N> result = Vector_nD<N>::cross_product(vectors);
-
-	for (size_t i = 0; i < result.components.size(); i++)
-	{
-		if (i % 2 == 1)
-			result.components[i] = -result.components[i];
-	}
-
-	double d_dot = Vector_nD<N>::dot_product(a_nd, result);
-	cout << d_dot << endl;
-
-	cout << m.determinant() << endl << endl;
-
-
-	return d_dot;
-}
-
-
 template <typename size_t N>
 double determinant_nxn(const MatrixXd& m)
 {
@@ -318,9 +207,10 @@ double determinant_nxn(const MatrixXd& m)
 		vectors.push_back(non);
 	}
 
-	// Compute the cross product
+	// Compute the cross product using (N - 1) vectors
 	Vector_nD<N> result = Vector_nD<N>::cross_product(vectors);
 
+	// Flip handedness
 	for (size_t i = 0; i < result.components.size(); i++)
 		if (i % 2 == 1)
 			result.components[i] = -result.components[i];
@@ -422,7 +312,7 @@ EllipseParameters fit_ellipse3x3(const std::vector<cartesian_point>& points)
 	Eigen::VectorXd b(3);
 
 	// Fill the matrix A and vector b with the equations from the points
-	for (size_t i = 0; i < 3; ++i)
+	for (size_t i = 0; i < 3; i++)
 	{
 		double x = points[i].x;
 		double y = points[i].y;
@@ -441,7 +331,7 @@ EllipseParameters fit_ellipse3x3(const std::vector<cartesian_point>& points)
 
 
 	// Solve for the ellipse parameters
-	double detMatrix = determinant3x3(A);
+	double detMatrix = determinant_nxn<3>(A);
 	EllipseParameters ep;
 
 	if (detMatrix == 0)
@@ -450,9 +340,9 @@ EllipseParameters fit_ellipse3x3(const std::vector<cartesian_point>& points)
 	}
 	else
 	{
-		double detMatrixa = determinant3x3(replace_column(A, b, 0));
-		double detMatrixc = determinant3x3(replace_column(A, b, 1));
-		double detMatrixe = determinant3x3(replace_column(A, b, 2));
+		double detMatrixa = determinant_nxn<3>(replace_column(A, b, 0));
+		double detMatrixc = determinant_nxn<3>(replace_column(A, b, 1));
+		double detMatrixe = determinant_nxn<3>(replace_column(A, b, 2));
 
 		double a = detMatrixa / detMatrix;
 		double c = detMatrixc / detMatrix;

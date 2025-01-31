@@ -193,14 +193,14 @@ double determinant_nxn(const MatrixXd& m)
 		return 0;
 	}
 
-	cout << "Setting 'a' vector" << endl;
+//	cout << "Setting 'a' vector" << endl;
 
 	Vector_nD<N> a_vector;
 	
 	for (size_t i = 0; i < N; i++)
 		a_vector.components[i] = m(0, i);
 
-	cout << "Setting 'b', etc. vectors" << endl;
+//	cout << "Setting 'b', etc. vectors" << endl;
 
 	std::vector<Vector_nD<N>> input_vectors;
 
@@ -214,25 +214,25 @@ double determinant_nxn(const MatrixXd& m)
 		input_vectors.push_back(b_vector);
 	}
 
-	cout << "Cross product" << endl;
+//	cout << "Cross product" << endl;
 
 	// Compute the cross product using (N - 1) vectors
 	Vector_nD<N> result = Vector_nD<N>::cross_product(input_vectors);
 
-	cout << "Flipping handedness" << endl;
+//	cout << "Flipping handedness" << endl;
 
 	// Flip handedness
 	for (size_t i = 0; i < result.components.size(); i++)
 		if (i % 2 == 1)
 			result.components[i] = -result.components[i];
 
-	cout << "Performing dot product" << endl;
+//	cout << "Performing dot product" << endl;
 
 	double d_dot = Vector_nD<N>::dot_product(a_vector, result);
 	
 	// These numbers should match
-	cout << d_dot << endl;
-	cout << m.determinant() << endl << endl;
+//	cout << d_dot << endl;
+//	cout << m.determinant() << endl << endl;
 
 	return d_dot;
 }
@@ -338,8 +338,10 @@ EllipseParameters fit_ellipse3x3(const std::vector<cartesian_point>& points)
 		b(i) = -1;
 	}
 
-	Eigen::VectorXd ellipse_coefficients_Jacobi = A.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(b);
 
+
+
+	//Eigen::VectorXd ellipse_coefficients_Jacobi = A.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(b);
 	//cout << ellipse_coefficients_Jacobi << endl;
 
 
@@ -476,12 +478,10 @@ void gauss_method(const vector_3d& r1, const vector_3d& r2, const vector_3d& r3,
 
 	if (dx < 0)
 	{
-		//		swap(a_orbit, b_orbit);
 		center.y = -a_orbit * e;
 	}
 	else
 	{
-
 		center.y = a_orbit * e;
 	}
 
@@ -500,7 +500,7 @@ int main(int argc, char** argv)
 
 	//srand((unsigned)time(0));
 
-	//const size_t N = 10; // Anything larger takes eons to solve
+	//const size_t N = 10; // Anything larger than 11 takes eons to solve
 
 	//MatrixXd m(N, N);
 

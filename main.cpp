@@ -111,6 +111,7 @@ public:
 		return components[index];
 	}
 
+	// Hodge star operator?
 	static Vector_nD cross_product(const std::vector<Vector_nD<N>>& vectors)
 	{
 		if (vectors.size() != (N - 1))
@@ -192,33 +193,44 @@ double determinant_nxn(const MatrixXd& m)
 		return 0;
 	}
 
-	Vector_nD<N> a_nd;
+	cout << "Setting 'a' vector" << endl;
+
+	Vector_nD<N> a_vector;
 	
 	for (size_t i = 0; i < N; i++)
-		a_nd.components[i] = m(0, i);
+		a_vector.components[i] = m(0, i);
 
-	std::vector<Vector_nD<N>> vectors;
+	cout << "Setting 'b', etc. vectors" << endl;
+
+	std::vector<Vector_nD<N>> input_vectors;
 
 	for (size_t i = 1; i < N; i++)
 	{
-		Vector_nD<N> non;
+		Vector_nD<N> b_vector;
 
 		for (size_t j = 0; j < N; j++)
-			non.components[j] = m(i, j);
+			b_vector.components[j] = m(i, j);
 
-		vectors.push_back(non);
+		input_vectors.push_back(b_vector);
 	}
 
+	cout << "Cross product" << endl;
+
 	// Compute the cross product using (N - 1) vectors
-	Vector_nD<N> result = Vector_nD<N>::cross_product(vectors);
+	Vector_nD<N> result = Vector_nD<N>::cross_product(input_vectors);
+
+	cout << "Flipping handedness" << endl;
 
 	// Flip handedness
 	for (size_t i = 0; i < result.components.size(); i++)
 		if (i % 2 == 1)
 			result.components[i] = -result.components[i];
 
-	double d_dot = Vector_nD<N>::dot_product(a_nd, result);
+	cout << "Performing dot product" << endl;
+
+	double d_dot = Vector_nD<N>::dot_product(a_vector, result);
 	
+	// These numbers should match
 	cout << d_dot << endl;
 	cout << m.determinant() << endl << endl;
 
@@ -486,13 +498,22 @@ int main(int argc, char** argv)
 	cout << std::scientific << endl;
 	//	cout << setprecision(20) << endl;
 
-	//const size_t N = 10;
+	//srand((unsigned)time(0));
+
+	//const size_t N = 10; // Anything larger takes eons to solve
 
 	//MatrixXd m(N, N);
 
 	//for (size_t i = 0; i < N; i++)
+	//{
 	//	for (size_t j = 0; j < N; j++)
-	//		m(i, j) = static_cast<double>(rand());
+	//	{
+	//		m(i, j) = static_cast<double>(rand())/static_cast<double>(RAND_MAX);
+
+	//		if (rand() % 2 == 0)
+	//			m(i, j) = -m(i, j);
+	//	}
+	//}
 
 	//determinant_nxn<N>(m);
 

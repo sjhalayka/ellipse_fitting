@@ -200,8 +200,6 @@ double determinant_nxn(const MatrixXd& m)
 	for (size_t i = 0; i < N; i++)
 		a_vector.components[i] = m(0, i);
 
-//	cout << "Setting 'b', etc. vectors" << endl;
-
 	std::vector<Vector_nD<N>> input_vectors;
 
 	for (size_t i = 1; i < N; i++)
@@ -214,27 +212,22 @@ double determinant_nxn(const MatrixXd& m)
 		input_vectors.push_back(b_vector);
 	}
 
-//	cout << "Cross product" << endl;
 
 	// Compute the cross product using (N - 1) vectors
 	Vector_nD<N> result = Vector_nD<N>::cross_product(input_vectors);
-
-//	cout << "Flipping handedness" << endl;
 
 	// Flip handedness
 	for (size_t i = 0; i < result.components.size(); i++)
 		if (i % 2 == 1)
 			result.components[i] = -result.components[i];
 
-//	cout << "Performing dot product" << endl;
-
-	double d_dot = Vector_nD<N>::dot_product(a_vector, result);
+	double det = Vector_nD<N>::dot_product(a_vector, result);
 	
 	// These numbers should match
-//	cout << d_dot << endl;
+//	cout << det << endl;
 //	cout << m.determinant() << endl << endl;
 
-	return d_dot;
+	return det;
 }
 
 

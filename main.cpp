@@ -78,6 +78,7 @@ void DrawEllipse(double cx, double cy, double rx, double ry, int num_segments)
 
 
 // https://claude.ai/chat/3caf4077-28b5-497f-b704-1b0c336a104d
+
 template<size_t N>
 class Vector_nD 
 {
@@ -85,13 +86,14 @@ public:
 	std::array<double, N> components;
 
 	// Helper function to get the sign of permutation
-	static int permutationSign(const std::array<int, (N - 1) > &perm) 
+	static int permutationSign(const std::array<int, (N - 1)> &perm) 
 	{
 		int inversions = 0;
 
 		for (int i = 0; i < (N - 2); i++) 
 			for (int j = i + 1; j < (N - 1); j++) 
-				if (perm[i] > perm[j]) inversions++;
+				if (perm[i] > perm[j]) 
+					inversions++;
 
 		return (inversions % 2 == 0) ? 1 : -1;
 	}
@@ -104,7 +106,6 @@ public:
 		for (size_t i = 0; i < N; i++)
 			components[i] = 0;
 	}
-
 
 	double operator[](size_t index) const {
 		if (index >= N) throw std::out_of_range("Index out of bounds");
@@ -132,7 +133,7 @@ public:
 		for (int k = 0; k < N; k++)
 		{
 			// Skip k in our calculations - this is equivalent to removing the k-th column
-			// For each permutation of the remaining 6 indices
+			// For each permutation of the remaining (N - 1) indices
 			do
 			{
 				// Calculate sign of this term
@@ -155,7 +156,7 @@ public:
 			while (std::next_permutation(baseIndices.begin(), baseIndices.end()));
 
 			// Reset indices for next component
-			for (int i = 0; i < N - 1; i++)
+			for (int i = 0; i < (N - 1); i++)
 				baseIndices[i] = i;
 		}
 
@@ -171,18 +172,7 @@ public:
 
 		return dot_prod;
 	}
-
-	// Method to print vector (for debugging)
-	void print() const {
-		std::cout << "(";
-		for (int i = 0; i < N; i++) {
-			std::cout << components[i];
-			if (i < (N - 1)) std::cout << ", ";
-		}
-		std::cout << ")" << std::endl;
-	}
 };
-
 
 template <typename size_t N>
 double determinant_nxn(const MatrixXd& m)
@@ -192,8 +182,6 @@ double determinant_nxn(const MatrixXd& m)
 		cout << "Matrix must be square" << endl;
 		return 0;
 	}
-
-//	cout << "Setting 'a' vector" << endl;
 
 	Vector_nD<N> a_vector;
 	
@@ -212,7 +200,6 @@ double determinant_nxn(const MatrixXd& m)
 		input_vectors.push_back(b_vector);
 	}
 
-
 	// Compute the cross product using (N - 1) vectors
 	Vector_nD<N> result = Vector_nD<N>::cross_product(input_vectors);
 
@@ -224,8 +211,8 @@ double determinant_nxn(const MatrixXd& m)
 	double det = Vector_nD<N>::dot_product(a_vector, result);
 	
 	// These numbers should match
-//	cout << det << endl;
-//	cout << m.determinant() << endl << endl;
+	cout << det << endl;
+	cout << m.determinant() << endl << endl;
 
 	return det;
 }
@@ -493,24 +480,24 @@ int main(int argc, char** argv)
 
 	//srand((unsigned)time(0));
 
-	//const size_t N = 10; // Anything larger than 11 takes eons to solve
+	const size_t N = 10; // Anything larger than 11 takes eons to solve
 
-	//MatrixXd m(N, N);
+	MatrixXd m(N, N);
 
-	//for (size_t i = 0; i < N; i++)
-	//{
-	//	for (size_t j = 0; j < N; j++)
-	//	{
-	//		m(i, j) = static_cast<double>(rand())/static_cast<double>(RAND_MAX);
+	for (size_t i = 0; i < N; i++)
+	{
+		for (size_t j = 0; j < N; j++)
+		{
+			m(i, j) = static_cast<double>(rand())/static_cast<double>(RAND_MAX);
 
-	//		if (rand() % 2 == 0)
-	//			m(i, j) = -m(i, j);
-	//	}
-	//}
+			if (rand() % 2 == 0)
+				m(i, j) = -m(i, j);
+		}
+	}
 
-	//determinant_nxn<N>(m);
+	determinant_nxn<N>(m);
 
-	//return 0;
+	return 0;
 
 	glutInit(&argc, argv);
 	init_opengl(win_x, win_y);
